@@ -1,8 +1,12 @@
 package com.refit.app.ui.session
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.refit.app.data.local.ReFitDatabase
+import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.data.model.RehabSessionResult
+import com.refit.app.data.repository.RehabSessionRepository
 import com.refit.app.data.source.EmgDataSource
 import com.refit.app.data.source.MockEmgDataSource
 import com.refit.app.signal.EmgSignalProcessor
@@ -19,12 +23,21 @@ data class SessionUiState(
     val samples: List<Float> = emptyList(),
     val currentActivation: Float = 0f,
     val elapsedSeconds: Long = 0L,
-    val result: RehabSessionResult? = null
+    val result: RehabSessionResult? = null,
+    val history: List<RehabSessionEntity> = emptyList(),
+    val showHistory: Boolean = false,
+    val isSaving: Boolean = false
 )
 
-class SessionViewModel : ViewModel() {
+class SessionViewModel(
+    application: Application
+) : AndroidViewModel(application) {
 
     private val dataSource: EmgDataSource = MockEmgDataSource()
+
+    private val repository = RehabSessionRepository(
+        ReFitDatabase.getInstance(application).rehabSessionDao()
+    )
 
     private val _uiState = MutableStateFlow(SessionUiState())
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
@@ -34,6 +47,16 @@ class SessionViewModel : ViewModel() {
 
     private val sessionSamples = mutableListOf<Float>()
 
+    init {
+        viewModelScope.launch {
+            repository.observeAll().collect { history ->
+                _uiState.value = _uiState.value.copy(
+                    history = history
+                )
+            }
+        }
+    }
+
     fun startSession() {
         if (_uiState.value.running) return
 
@@ -42,9 +65,15 @@ class SessionViewModel : ViewModel() {
         emgJob = viewModelScope.launch {
             dataSource.connect()
 
-            _uiState.value = SessionUiState(
+            _uiState.value = _uiState.value.copy(
                 connected = true,
-                running = true
+                running = true,
+                samples = emptyList(),
+                currentActivation = 0f,
+                elapsedSeconds = 0L,
+                result = null,
+                showHistory = false,
+                isSaving = false
             )
 
             dataSource.observeEmg().collect { sample ->
@@ -77,8 +106,9 @@ class SessionViewModel : ViewModel() {
 
         val duration = _uiState.value.elapsedSeconds
         val samplesSnapshot = sessionSamples.toList()
+        val createdAt = System.currentTimeMillis()
 
-        val result = RehabSessionResult(
+        val baseResult = RehabSessionResult(
             durationSeconds = duration,
             sampleCount = samplesSnapshot.size,
             rms = EmgSignalProcessor.rms(samplesSnapshot),
@@ -89,20 +119,58 @@ class SessionViewModel : ViewModel() {
         emgJob?.cancel()
         timerJob?.cancel()
 
-        viewModelScope.launch {
-            dataSource.disconnect()
-        }
-
         _uiState.value = _uiState.value.copy(
             connected = false,
             running = false,
-            result = result
+            isSaving = true
+        )
+
+        viewModelScope.launch {
+            dataSource.disconnect()
+
+            val previous = repository.getLatest()
+
+            val sessionId = repository.insert(
+                RehabSessionEntity(
+                    createdAt = createdAt,
+                    exerciseName = "손목 폄 운동",
+                    durationSeconds = duration,
+                    sampleCount = samplesSnapshot.size,
+                    rms = baseResult.rms,
+                    mav = baseResult.mav,
+                    maxActivation = baseResult.maxActivation
+                )
+            )
+
+            _uiState.value = _uiState.value.copy(
+                result = baseResult.copy(
+                    previousRms = previous?.rms,
+                    savedSessionId = sessionId
+                ),
+                isSaving = false
+            )
+        }
+    }
+
+    fun openHistory() {
+        if (_uiState.value.running) return
+        _uiState.value = _uiState.value.copy(
+            showHistory = true,
+            result = null
+        )
+    }
+
+    fun closeHistory() {
+        _uiState.value = _uiState.value.copy(
+            showHistory = false
         )
     }
 
     fun resetSession() {
         sessionSamples.clear()
-        _uiState.value = SessionUiState()
+        _uiState.value = SessionUiState(
+            history = _uiState.value.history
+        )
     }
 
     override fun onCleared() {
