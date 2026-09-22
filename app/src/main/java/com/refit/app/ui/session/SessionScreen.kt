@@ -16,12 +16,22 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.refit.app.ui.result.ResultScreen
 
 @Composable
 fun SessionScreen(
     viewModel: SessionViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    val result = state.result
+    if (result != null) {
+        ResultScreen(
+            result = result,
+            onDone = viewModel::resetSession
+        )
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -81,14 +91,14 @@ fun SessionScreen(
 
         if (!state.running) {
             Button(
-                onClick = { viewModel.startSession() },
+                onClick = viewModel::startSession,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("재활 시작")
             }
         } else {
             Button(
-                onClick = { viewModel.stopSession() },
+                onClick = viewModel::stopSession,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("운동 종료")
