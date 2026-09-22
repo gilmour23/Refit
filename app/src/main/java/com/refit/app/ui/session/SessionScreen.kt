@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.refit.app.ui.history.HistoryScreen
 import com.refit.app.ui.result.ResultScreen
 
 @Composable
@@ -23,6 +25,14 @@ fun SessionScreen(
     viewModel: SessionViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    if (state.showHistory) {
+        HistoryScreen(
+            sessions = state.history,
+            onBack = viewModel::closeHistory
+        )
+        return
+    }
 
     val result = state.result
     if (result != null) {
@@ -89,12 +99,21 @@ fun SessionScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        if (!state.running) {
+        if (state.isSaving) {
+            Text("세션 저장 중...")
+        } else if (!state.running) {
             Button(
                 onClick = viewModel::startSession,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("재활 시작")
+            }
+
+            OutlinedButton(
+                onClick = viewModel::openHistory,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("이전 기록")
             }
         } else {
             Button(

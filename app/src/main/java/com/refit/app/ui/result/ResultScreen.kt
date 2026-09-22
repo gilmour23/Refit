@@ -19,6 +19,12 @@ fun ResultScreen(
     result: RehabSessionResult,
     onDone: () -> Unit
 ) {
+    val rmsComparison = result.previousRms
+        ?.takeIf { it != 0f }
+        ?.let { previous ->
+            ((result.rms - previous) / previous) * 100f
+        }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -53,6 +59,20 @@ fun ResultScreen(
         ResultItem(
             label = "수집 샘플",
             value = result.sampleCount.toString()
+        )
+
+        ResultItem(
+            label = "이전 세션 대비 RMS",
+            value = when {
+                result.previousRms == null -> "첫 기록"
+                rmsComparison == null -> "비교 불가"
+                else -> "%+.1f%%".format(rmsComparison)
+            }
+        )
+
+        Text(
+            text = "※ 현재 비교값은 MVP 데모용입니다. 실제 임상 비교에는 전극 위치 통제와 정규화가 필요합니다.",
+            style = MaterialTheme.typography.bodySmall
         )
 
         Spacer(modifier = Modifier.weight(1f))
