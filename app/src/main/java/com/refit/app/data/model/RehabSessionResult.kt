@@ -5,5 +5,7 @@ data class RehabSessionResult(
     val sampleCount: Int,
     val rms: Float,
     val mav: Float,
-    val maxActivation: Float
+    val maxActivation: Float,
+    val previousRms: Float? = null,
+    val savedSessionId: Long? = null
 )
