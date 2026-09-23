@@ -115,7 +115,7 @@ fun LiveSessionScreen(
                 )
 
                 Text(
-                    text = if (state.connected) "● 연결됨" else "연결 중",
+                    text = if (state.connected) "● 연결됨" else "연결 종료",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ReFitSuccess,
                     modifier = Modifier.padding(top = 2.dp)
@@ -188,19 +188,30 @@ fun LiveSessionScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Button(
-            onClick = onStop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = ReFitButtonShape,
-            colors = ButtonDefaults.buttonColors(containerColor = ReFitDanger),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-        ) {
+        if (state.isSaving) {
             Text(
-                text = "운동 종료",
-                fontWeight = FontWeight.SemiBold
+                text = "세션 저장 중...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ReFitSubtext,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
             )
+        } else {
+            Button(
+                onClick = onStop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = ReFitButtonShape,
+                colors = ButtonDefaults.buttonColors(containerColor = ReFitDanger),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+            ) {
+                Text(
+                    text = "운동 종료",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
