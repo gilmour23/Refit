@@ -17,7 +17,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class ReFitScreen {
+    HOME,
+    INTRO,
+    LIVE,
+    RESULT,
+    HISTORY
+}
+
 data class SessionUiState(
+    val screen: ReFitScreen = ReFitScreen.HOME,
     val connected: Boolean = false,
     val running: Boolean = false,
     val samples: List<Float> = emptyList(),
@@ -25,7 +34,6 @@ data class SessionUiState(
     val elapsedSeconds: Long = 0L,
     val result: RehabSessionResult? = null,
     val history: List<RehabSessionEntity> = emptyList(),
-    val showHistory: Boolean = false,
     val isSaving: Boolean = false
 )
 
@@ -57,8 +65,39 @@ class SessionViewModel(
         }
     }
 
-    fun startSession() {
+    fun openIntro() {
         if (_uiState.value.running) return
+        _uiState.value = _uiState.value.copy(
+            screen = ReFitScreen.INTRO,
+            result = null
+        )
+    }
+
+    fun openHistory() {
+        if (_uiState.value.running) return
+        _uiState.value = _uiState.value.copy(
+            screen = ReFitScreen.HISTORY,
+            result = null
+        )
+    }
+
+    fun backToHome() {
+        if (_uiState.value.running) return
+        sessionSamples.clear()
+        _uiState.value = _uiState.value.copy(
+            screen = ReFitScreen.HOME,
+            connected = false,
+            running = false,
+            samples = emptyList(),
+            currentActivation = 0f,
+            elapsedSeconds = 0L,
+            result = null,
+            isSaving = false
+        )
+    }
+
+    fun startSession() {
+        if (_uiState.value.running || _uiState.value.isSaving) return
 
         sessionSamples.clear()
 
@@ -66,13 +105,13 @@ class SessionViewModel(
             dataSource.connect()
 
             _uiState.value = _uiState.value.copy(
+                screen = ReFitScreen.LIVE,
                 connected = true,
                 running = true,
                 samples = emptyList(),
                 currentActivation = 0f,
                 elapsedSeconds = 0L,
                 result = null,
-                showHistory = false,
                 isSaving = false
             )
 
@@ -143,6 +182,7 @@ class SessionViewModel(
             )
 
             _uiState.value = _uiState.value.copy(
+                screen = ReFitScreen.RESULT,
                 result = baseResult.copy(
                     previousRms = previous?.rms,
                     savedSessionId = sessionId
@@ -152,25 +192,8 @@ class SessionViewModel(
         }
     }
 
-    fun openHistory() {
-        if (_uiState.value.running) return
-        _uiState.value = _uiState.value.copy(
-            showHistory = true,
-            result = null
-        )
-    }
-
-    fun closeHistory() {
-        _uiState.value = _uiState.value.copy(
-            showHistory = false
-        )
-    }
-
     fun resetSession() {
-        sessionSamples.clear()
-        _uiState.value = SessionUiState(
-            history = _uiState.value.history
-        )
+        backToHome()
     }
 
     override fun onCleared() {
