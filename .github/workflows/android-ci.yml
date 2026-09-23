@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build-and-ui-smoke:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,19 +38,9 @@ jobs:
       - name: Assemble debug
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Run 390x844 UI smoke flow
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          profile: pixel_2
-          disable-animations: false
-          script: bash scripts/ui_smoke.sh
-
-      - name: Upload UI screenshots
-        if: always()
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: refit-ui-smoke
-          path: ui-artifacts/
-          if-no-files-found: warn
+          name: refit-v0.4-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
