@@ -2,7 +2,8 @@ name: Android CI
 
 on:
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,7 +12,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -22,27 +22,18 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Locate Android SDK manager
-        id: android_sdk
+      - name: Install Android SDK 35
         shell: bash
         run: |
           SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -n 1)"
           test -n "$SDKMANAGER"
-          echo "sdkmanager=$SDKMANAGER" >> "$GITHUB_OUTPUT"
-
-      - name: Accept Android SDK licenses
-        shell: bash
-        run: yes | "${{ steps.android_sdk.outputs.sdkmanager }}" --licenses > /dev/null || true
-
-      - name: Install Android SDK 35
-        shell: bash
-        run: "${{ steps.android_sdk.outputs.sdkmanager }}" "platforms;android-35" "build-tools;34.0.0"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;34.0.0"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.9"
-          cache-provider: basic
 
       - name: Assemble debug
         run: gradle --no-daemon :app:assembleDebug
