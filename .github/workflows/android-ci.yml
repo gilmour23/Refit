@@ -41,10 +41,10 @@ jobs:
       - name: Run 390x844 UI smoke flow
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           arch: x86_64
           profile: pixel_2
-          disable-animations: true
+          disable-animations: false
           script: bash scripts/ui_smoke.sh
 
       - name: Upload UI screenshots
