@@ -48,7 +48,7 @@ fun LiveSessionScreen(
             )
 
             Text(
-                text = "2 / 5세트",
+                text = "목표 10회 × 5세트",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext
             )
@@ -83,12 +83,12 @@ fun LiveSessionScreen(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "6 / 10",
+                    text = "운동 중",
                     style = MaterialTheme.typography.headlineMedium
                 )
 
                 Text(
-                    text = "반복",
+                    text = "현재 세션",
                     style = MaterialTheme.typography.bodySmall,
                     color = ReFitSubtext
                 )
