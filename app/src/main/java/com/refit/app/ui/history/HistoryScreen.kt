@@ -308,12 +308,28 @@ private fun SessionHistoryRow(
         )
 
         Text(
+            text = session.orthosisProfile,
+            style = MaterialTheme.typography.bodySmall,
+            color = ReFitPrimary,
+            modifier = Modifier.padding(top = 5.dp)
+        )
+
+        Text(
             text = "RMS " + "%.4f".format(session.rms),
             style = MaterialTheme.typography.bodyMedium,
             color = ReFitSubtext,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = 3.dp)
         )
+
+        if (session.calibrationRest != null && session.calibrationActive != null) {
+            Text(
+                text = "기준 측정 포함",
+                style = MaterialTheme.typography.bodySmall,
+                color = ReFitSubtext,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
     }
 }
 
