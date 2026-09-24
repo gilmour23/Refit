@@ -80,12 +80,12 @@ fun LiveSessionScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            WristExtensionVisual(compact = true)
+            AnimatedWristExerciseCard(compact = true)
 
             Spacer(modifier = Modifier.height(18.dp))
 
             Text(
-                text = "손목을 위로 올리고 2초 유지한 뒤 천천히 내려주세요.",
+                text = "애니메이션을 따라 손목을 천천히 움직이세요.",
                 style = MaterialTheme.typography.titleMedium
             )
 
