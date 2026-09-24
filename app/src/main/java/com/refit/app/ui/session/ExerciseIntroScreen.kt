@@ -69,7 +69,7 @@ fun ExerciseIntroScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            WristExtensionVisual()
+            AnimatedWristExerciseCard()
 
             Spacer(modifier = Modifier.height(22.dp))
 
