@@ -17,6 +17,19 @@ android {
         versionName = "0.4"
     }
 
+    buildTypes {
+        getByName("debug") {
+            // Local development build. Compose tooling is attached only here.
+        }
+
+        create("internal") {
+            isDebuggable = false
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -52,5 +65,6 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
+    // PreviewActivity and inspection tooling remain debug-only.
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
