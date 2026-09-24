@@ -2,8 +2,6 @@ package com.refit.app.ui.home
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -27,14 +28,16 @@ import androidx.compose.ui.unit.dp
 import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.ui.theme.ReFitBorder
 import com.refit.app.ui.theme.ReFitButtonShape
-import com.refit.app.ui.theme.ReFitCardShape
 import com.refit.app.ui.theme.ReFitPrimary
+import com.refit.app.ui.theme.ReFitPrimarySoft
 import com.refit.app.ui.theme.ReFitSubtext
 import com.refit.app.ui.theme.ReFitSuccess
-import com.refit.app.ui.theme.ReFitSuccessSoft
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
 @Composable
 fun HomeScreen(
@@ -42,10 +45,15 @@ fun HomeScreen(
     onStartRehab: () -> Unit,
     onOpenHistory: () -> Unit
 ) {
+    val completedDays = completedDaysThisWeek(history)
+    val weeklyTarget = 5
+    val progress = (completedDays.toFloat() / weeklyTarget).coerceIn(0f, 1f)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Text(
@@ -56,31 +64,20 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(28.dp))
 
         Text(
-            text = "김OO님",
-            style = MaterialTheme.typography.headlineSmall
+            text = "오늘의 재활",
+            style = MaterialTheme.typography.headlineMedium
         )
 
         Text(
-            text = "오늘 예정된 재활이 1개 있습니다.",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "손목 움직임을 천천히 확인하며 진행하세요.",
+            style = MaterialTheme.typography.bodyLarge,
             color = ReFitSubtext,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(top = 5.dp)
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        TodayRehabCard(onStartRehab = onStartRehab)
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Text(
-            text = "이번 주 목표",
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        WeeklyGoal()
+        TodayProgramCard(onStartRehab = onStartRehab)
 
         Spacer(modifier = Modifier.height(28.dp))
 
@@ -89,14 +86,55 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "최근 활동",
+                text = "이번 주",
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "최근 2개",
+                text = completedDays.toString() + " / " + weeklyTarget + "일 완료",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext
             )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(
+                    color = ReFitBorder,
+                    shape = RoundedCornerShape(999.dp)
+                )
+        ) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(8.dp)
+                    .background(
+                        color = ReFitPrimary,
+                        shape = RoundedCornerShape(999.dp)
+                    )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(30.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "최근 재활",
+                style = MaterialTheme.typography.titleMedium
+            )
+            if (history.isNotEmpty()) {
+                Text(
+                    text = "최근 " + history.take(2).size + "개",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitSubtext
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -117,7 +155,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Button(
             onClick = onOpenHistory,
@@ -132,7 +170,7 @@ fun HomeScreen(
             border = BorderStroke(1.dp, ReFitBorder),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
-            Text("재활 기록 보기")
+            Text("전체 기록 보기")
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -140,129 +178,74 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TodayRehabCard(
+private fun TodayProgramCard(
     onStartRehab: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = ReFitCardShape,
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         border = BorderStroke(1.dp, ReFitBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "오늘의 재활",
-                style = MaterialTheme.typography.bodySmall,
-                color = ReFitSubtext
-            )
-
-            Text(
-                text = "손목 폄 운동",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-
-            Text(
-                text = "약 10분 · 5세트",
-                style = MaterialTheme.typography.bodyMedium,
-                color = ReFitSubtext,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Text(
-                text = "●  센서 연결 준비됨",
-                style = MaterialTheme.typography.bodyMedium,
-                color = ReFitSuccess,
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .background(
-                        color = ReFitSuccessSoft,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 7.dp)
-            )
-
-            Button(
-                onClick = onStartRehab,
+        Column {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp)
-                    .height(52.dp),
-                shape = ReFitButtonShape,
-                colors = ButtonDefaults.buttonColors(containerColor = ReFitPrimary),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                    .background(ReFitPrimarySoft)
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
             ) {
                 Text(
-                    text = "재활 시작",
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeeklyGoal() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = ReFitCardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(1.dp, ReFitBorder),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = "3 / 5일",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    Text(
-                        text = "재활 완료",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ReFitSubtext,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-                Text(
-                    text = "60%",
+                    text = "오늘의 프로그램",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ReFitSubtext
                 )
+                Text(
+                    text = "손목 폄 운동",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
+                Text(
+                    text = "10회 × 5세트 · 약 10분",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = ReFitSubtext,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .background(
-                        color = ReFitBorder,
-                        shape = RoundedCornerShape(999.dp)
-                    )
+            Column(
+                modifier = Modifier.padding(18.dp)
             ) {
-                Spacer(
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(8.dp)
-                        .background(
-                            color = ReFitPrimary,
-                            shape = RoundedCornerShape(999.dp)
-                        )
+                Text(
+                    text = "●  sEMG 센서 준비됨",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitSuccess
                 )
+
+                Text(
+                    text = "운동 중 센서 신호는 보조 정보로 함께 기록됩니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitSubtext,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
+
+                Button(
+                    onClick = onStartRehab,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .height(54.dp),
+                    shape = ReFitButtonShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = ReFitPrimary),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                ) {
+                    Text(
+                        text = "오늘 재활 시작",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
@@ -275,40 +258,57 @@ private fun RecentSessionRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp)
+            .padding(vertical = 13.dp)
     ) {
-        Text(
-            text = formatDate(session.createdAt),
-            style = MaterialTheme.typography.bodySmall,
-            color = ReFitSubtext
-        )
-        Text(
-            text = session.exerciseName,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 2.dp)
-        )
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 5.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "RMS %.3f".format(session.rms),
-                style = MaterialTheme.typography.bodyMedium,
+                text = formatDateTime(session.createdAt),
+                style = MaterialTheme.typography.bodySmall,
                 color = ReFitSubtext
             )
             Text(
                 text = formatDuration(session.durationSeconds),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = ReFitSubtext
             )
         }
+
+        Text(
+            text = session.exerciseName,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        Text(
+            text = "RMS %.4f".format(session.rms),
+            style = MaterialTheme.typography.bodyMedium,
+            color = ReFitSubtext,
+            modifier = Modifier.padding(top = 4.dp)
+        )
     }
 }
 
-private fun formatDate(timestamp: Long): String {
-    val formatter = DateTimeFormatter.ofPattern("MM.dd")
+private fun completedDaysThisWeek(history: List<RehabSessionEntity>): Int {
+    val zone = ZoneId.systemDefault()
+    val today = LocalDate.now(zone)
+    val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
+    return history
+        .map {
+            Instant.ofEpochMilli(it.createdAt)
+                .atZone(zone)
+                .toLocalDate()
+        }
+        .filter { !it.isBefore(monday) && !it.isAfter(today) }
+        .distinct()
+        .size
+}
+
+private fun formatDateTime(timestamp: Long): String {
+    val formatter = DateTimeFormatter.ofPattern("MM.dd HH:mm")
     return Instant.ofEpochMilli(timestamp)
         .atZone(ZoneId.systemDefault())
         .format(formatter)
