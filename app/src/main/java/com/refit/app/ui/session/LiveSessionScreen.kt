@@ -137,6 +137,34 @@ fun LiveSessionScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = ReFitPrimarySoft,
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = signalFeedback(state.currentActivation),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ReFitPrimary
+                )
+
+                if (state.calibrationRest != null && state.calibrationActive != null) {
+                    Text(
+                        text = "오늘 측정한 기준값을 적용해 기록 중",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ReFitSubtext,
+                        modifier = Modifier.padding(top = 3.dp)
+                    )
+                }
+            }
+
             Text(
                 text = if (showSignal) "신호 접기" else "실시간 신호 보기",
                 style = MaterialTheme.typography.bodyMedium,
@@ -205,6 +233,14 @@ fun LiveSessionScreen(
                 )
             }
         }
+    }
+}
+
+private fun signalFeedback(value: Float): String {
+    return when {
+        value < 0.04f -> "신호가 약합니다 · 센서 접촉을 확인하세요"
+        value > 0.68f -> "신호 변화 감지 · 동작을 천천히 유지하세요"
+        else -> "신호 안정 · 기록 중"
     }
 }
 
