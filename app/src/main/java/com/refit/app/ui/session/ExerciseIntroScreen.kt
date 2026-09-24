@@ -1,6 +1,5 @@
 package com.refit.app.ui.session
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,8 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.refit.app.ui.theme.ReFitBorder
 import com.refit.app.ui.theme.ReFitButtonShape
-import com.refit.app.ui.theme.ReFitCardShape
 import com.refit.app.ui.theme.ReFitPrimary
 import com.refit.app.ui.theme.ReFitSubtext
 import com.refit.app.ui.theme.ReFitSuccess
@@ -44,16 +41,18 @@ fun ExerciseIntroScreen(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 18.dp)
+                .padding(horizontal = 20.dp)
         ) {
+            Spacer(modifier = Modifier.height(18.dp))
+
             Text(
-                text = "‹  운동 준비",
+                text = "‹  오늘의 재활",
                 style = MaterialTheme.typography.bodyLarge,
                 color = ReFitSubtext,
                 modifier = Modifier.clickable(onClick = onBack)
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(26.dp))
 
             Text(
                 text = "손목 폄 운동",
@@ -61,56 +60,54 @@ fun ExerciseIntroScreen(
             )
 
             Text(
-                text = "손목 관절을 천천히 위로 움직이는 재활 운동입니다.",
+                text = "손목을 위로 천천히 움직여 폄 동작을 연습합니다.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = ReFitSubtext,
-                modifier = Modifier.padding(top = 5.dp)
+                modifier = Modifier.padding(top = 6.dp)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
             AnimatedWristExerciseCard()
 
-            Spacer(modifier = Modifier.height(22.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = ReFitCardShape,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                border = BorderStroke(1.dp, ReFitBorder),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 15.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    PlanItem(label = "반복", value = "10회")
-                    PlanItem(label = "세트", value = "5세트")
-                    PlanItem(label = "예상 시간", value = "약 10분")
-                }
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "운동 방법",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Column(
-                modifier = Modifier.padding(top = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Instruction("1", "팔과 전완을 편안하게 고정합니다.")
-                Instruction("2", "손목을 위로 천천히 들어 올립니다.")
-                Instruction("3", "2초간 유지한 뒤 천천히 내려옵니다.")
+                PlanValue(label = "반복", value = "10회")
+                PlanValue(label = "세트", value = "5세트")
+                PlanValue(label = "예상 시간", value = "10분")
             }
 
             Spacer(modifier = Modifier.height(22.dp))
+            HorizontalDivider(color = ReFitBorder)
+            Spacer(modifier = Modifier.height(22.dp))
+
+            Text(
+                text = "시작하기 전에",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Instruction(
+                number = "01",
+                text = "팔과 전완을 편안한 위치에 고정하세요."
+            )
+            Instruction(
+                number = "02",
+                text = "손목만 움직이도록 하고 통증이 생기면 멈추세요."
+            )
+            Instruction(
+                number = "03",
+                text = "애니메이션 속도에 맞춰 천천히 반복하세요."
+            )
+
+            Spacer(modifier = Modifier.height(22.dp))
+            HorizontalDivider(color = ReFitBorder)
+            Spacer(modifier = Modifier.height(18.dp))
 
             Text(
                 text = "●  sEMG 센서 연결 준비됨",
@@ -119,10 +116,10 @@ fun ExerciseIntroScreen(
             )
 
             Text(
-                text = "센서 신호는 운동 중 자동으로 기록됩니다.",
+                text = "센서 신호는 운동 중 자동 기록되며 동작 안내와 별도로 표시됩니다.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 5.dp)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -139,7 +136,7 @@ fun ExerciseIntroScreen(
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
             Text(
-                text = "운동 시작",
+                text = "재활 시작",
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -147,7 +144,7 @@ fun ExerciseIntroScreen(
 }
 
 @Composable
-private fun PlanItem(
+private fun PlanValue(
     label: String,
     value: String
 ) {
@@ -159,7 +156,7 @@ private fun PlanItem(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(top = 2.dp)
         )
     }
@@ -170,13 +167,15 @@ private fun Instruction(
     number: String,
     text: String
 ) {
-    Row {
+    Row(
+        modifier = Modifier.padding(bottom = 14.dp)
+    ) {
         Text(
             text = number,
             style = MaterialTheme.typography.bodyMedium,
             color = ReFitPrimary,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(end = 10.dp)
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(end = 14.dp)
         )
 
         Text(
