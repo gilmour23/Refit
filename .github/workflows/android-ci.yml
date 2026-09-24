@@ -38,9 +38,55 @@ jobs:
       - name: Assemble debug
         run: gradle --no-daemon :app:assembleDebug
 
+      - name: Assemble hardened internal
+        run: gradle --no-daemon :app:assembleInternal
+
+      - name: Verify internal APK hardening
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/internal/app-internal.apk"
+          AAPT="/usr/local/lib/android/sdk/build-tools/34.0.0/aapt"
+
+          test -f "$APK"
+          "$AAPT" dump badging "$APK" > /tmp/refit-badging.txt
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/refit-manifest.txt
+          "$AAPT" dump permissions "$APK" > /tmp/refit-permissions.txt
+
+          if grep -q "application-debuggable" /tmp/refit-badging.txt; then
+            echo "Internal APK is debuggable"
+            exit 1
+          fi
+
+          if grep -q "androidx.compose.ui.tooling.PreviewActivity" /tmp/refit-manifest.txt; then
+            echo "Compose PreviewActivity leaked into internal APK"
+            exit 1
+          fi
+
+          if ! grep -Eq "android:allowBackup.*0x0" /tmp/refit-manifest.txt; then
+            echo "allowBackup=false was not found"
+            exit 1
+          fi
+
+          if ! grep -Eq "android:usesCleartextTraffic.*0x0" /tmp/refit-manifest.txt; then
+            echo "usesCleartextTraffic=false was not found"
+            exit 1
+          fi
+
+          if grep -q "android.permission.INTERNET" /tmp/refit-permissions.txt; then
+            echo "Unexpected INTERNET permission"
+            exit 1
+          fi
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: refit-v0.4-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload hardened internal APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: refit-v0.4-internal-hardened-apk
+          path: app/build/outputs/apk/internal/app-internal.apk
           if-no-files-found: error
