@@ -156,7 +156,7 @@ fun HomeScreen(
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
-                        text = "운동 시작",
+                        text = "재활 준비",
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -164,6 +164,42 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(30.dp))
+
+        Text(
+            text = "내 보조기",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "맞춤 손목 보조기",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "재활 세션에 연결됨",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ReFitSubtext,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+            }
+
+            Text(
+                text = "착용 확인",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ReFitPrimary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(26.dp))
+        HorizontalDivider(color = ReFitBorder)
+        Spacer(modifier = Modifier.height(26.dp))
 
         Text(
             text = "이번 주",
