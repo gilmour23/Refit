@@ -19,10 +19,19 @@ import kotlinx.coroutines.launch
 
 enum class ReFitScreen {
     HOME,
+    SENSOR_SETUP,
+    CALIBRATION,
     INTRO,
     LIVE,
     RESULT,
     HISTORY
+}
+
+enum class CalibrationPhase {
+    IDLE,
+    REST,
+    CONTRACT,
+    COMPLETE
 }
 
 data class SessionUiState(
@@ -34,7 +43,13 @@ data class SessionUiState(
     val elapsedSeconds: Long = 0L,
     val result: RehabSessionResult? = null,
     val history: List<RehabSessionEntity> = emptyList(),
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    val orthosisProfile: String = "맞춤 손목 보조기",
+    val setupConfirmed: Boolean = false,
+    val calibrationPhase: CalibrationPhase = CalibrationPhase.IDLE,
+    val calibrationProgress: Float = 0f,
+    val calibrationRest: Float? = null,
+    val calibrationActive: Float? = null
 )
 
 class SessionViewModel(
@@ -52,6 +67,7 @@ class SessionViewModel(
 
     private var emgJob: Job? = null
     private var timerJob: Job? = null
+    private var calibrationJob: Job? = null
 
     private val sessionSamples = mutableListOf<Float>()
 
@@ -65,11 +81,103 @@ class SessionViewModel(
         }
     }
 
-    fun openIntro() {
+    fun openSensorSetup() {
         if (_uiState.value.running) return
         _uiState.value = _uiState.value.copy(
-            screen = ReFitScreen.INTRO,
+            screen = ReFitScreen.SENSOR_SETUP,
+            setupConfirmed = false,
+            calibrationPhase = CalibrationPhase.IDLE,
+            calibrationProgress = 0f,
             result = null
+        )
+    }
+
+    fun confirmSensorSetup() {
+        if (_uiState.value.running) return
+        _uiState.value = _uiState.value.copy(
+            screen = ReFitScreen.CALIBRATION,
+            setupConfirmed = true,
+            calibrationPhase = CalibrationPhase.IDLE,
+            calibrationProgress = 0f
+        )
+    }
+
+    fun startCalibration() {
+        if (calibrationJob?.isActive == true || _uiState.value.running) return
+
+        calibrationJob = viewModelScope.launch {
+            dataSource.connect()
+
+            val collected = mutableListOf<Float>()
+
+            val collectorJob = launch {
+                dataSource.observeEmg().collect { sample ->
+                    collected += sample.value
+                    _uiState.value = _uiState.value.copy(
+                        connected = true,
+                        currentActivation = sample.value
+                    )
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                calibrationPhase = CalibrationPhase.REST,
+                calibrationProgress = 0f
+            )
+
+            repeat(30) { index ->
+                delay(100)
+                _uiState.value = _uiState.value.copy(
+                    calibrationProgress = (index + 1) / 30f
+                )
+            }
+
+            val restCount = collected.size
+            val restSamples = collected.toList()
+            val restBaseline = restSamples
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?.toFloat()
+                ?: 0f
+
+            _uiState.value = _uiState.value.copy(
+                calibrationPhase = CalibrationPhase.CONTRACT,
+                calibrationProgress = 0f,
+                calibrationRest = restBaseline
+            )
+
+            repeat(30) { index ->
+                delay(100)
+                _uiState.value = _uiState.value.copy(
+                    calibrationProgress = (index + 1) / 30f
+                )
+            }
+
+            val activeSamples = collected.drop(restCount)
+            val activeBaseline = activeSamples
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?.toFloat()
+                ?: restBaseline
+
+            collectorJob.cancel()
+            dataSource.disconnect()
+
+            _uiState.value = _uiState.value.copy(
+                connected = false,
+                calibrationPhase = CalibrationPhase.COMPLETE,
+                calibrationProgress = 1f,
+                calibrationRest = restBaseline,
+                calibrationActive = activeBaseline
+            )
+        }
+    }
+
+    fun continueAfterCalibration() {
+        if (_uiState.value.calibrationPhase != CalibrationPhase.COMPLETE) return
+
+        _uiState.value = _uiState.value.copy(
+            screen = ReFitScreen.INTRO
         )
     }
 
@@ -83,7 +191,15 @@ class SessionViewModel(
 
     fun backToHome() {
         if (_uiState.value.running) return
+        calibrationJob?.cancel()
+        calibrationJob = null
+
         sessionSamples.clear()
+
+        viewModelScope.launch {
+            dataSource.disconnect()
+        }
+
         _uiState.value = _uiState.value.copy(
             screen = ReFitScreen.HOME,
             connected = false,
@@ -92,7 +208,28 @@ class SessionViewModel(
             currentActivation = 0f,
             elapsedSeconds = 0L,
             result = null,
-            isSaving = false
+            isSaving = false,
+            setupConfirmed = false,
+            calibrationPhase = CalibrationPhase.IDLE,
+            calibrationProgress = 0f
+        )
+    }
+
+    fun backToSensorSetup() {
+        if (_uiState.value.running) return
+
+        calibrationJob?.cancel()
+        calibrationJob = null
+
+        viewModelScope.launch {
+            dataSource.disconnect()
+        }
+
+        _uiState.value = _uiState.value.copy(
+            screen = ReFitScreen.SENSOR_SETUP,
+            connected = false,
+            calibrationPhase = CalibrationPhase.IDLE,
+            calibrationProgress = 0f
         )
     }
 
@@ -146,13 +283,19 @@ class SessionViewModel(
         val duration = _uiState.value.elapsedSeconds
         val samplesSnapshot = sessionSamples.toList()
         val createdAt = System.currentTimeMillis()
+        val orthosisProfile = _uiState.value.orthosisProfile
+        val restBaseline = _uiState.value.calibrationRest
+        val activeBaseline = _uiState.value.calibrationActive
 
         val baseResult = RehabSessionResult(
             durationSeconds = duration,
             sampleCount = samplesSnapshot.size,
             rms = EmgSignalProcessor.rms(samplesSnapshot),
             mav = EmgSignalProcessor.mav(samplesSnapshot),
-            maxActivation = samplesSnapshot.maxOrNull() ?: 0f
+            maxActivation = samplesSnapshot.maxOrNull() ?: 0f,
+            orthosisProfile = orthosisProfile,
+            calibrationRest = restBaseline,
+            calibrationActive = activeBaseline
         )
 
         emgJob?.cancel()
@@ -177,7 +320,10 @@ class SessionViewModel(
                     sampleCount = samplesSnapshot.size,
                     rms = baseResult.rms,
                     mav = baseResult.mav,
-                    maxActivation = baseResult.maxActivation
+                    maxActivation = baseResult.maxActivation,
+                    orthosisProfile = orthosisProfile,
+                    calibrationRest = restBaseline,
+                    calibrationActive = activeBaseline
                 )
             )
 
@@ -199,6 +345,7 @@ class SessionViewModel(
     override fun onCleared() {
         emgJob?.cancel()
         timerJob?.cancel()
+        calibrationJob?.cancel()
         super.onCleared()
     }
 }
