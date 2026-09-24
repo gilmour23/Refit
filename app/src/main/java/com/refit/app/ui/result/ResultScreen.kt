@@ -60,6 +60,24 @@ fun ResultScreen(
                 modifier = Modifier.padding(top = 6.dp)
             )
 
+            Spacer(modifier = Modifier.height(22.dp))
+
+            Text(
+                text = result.orthosisProfile,
+                style = MaterialTheme.typography.bodyMedium,
+                color = ReFitPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            if (result.calibrationRest != null && result.calibrationActive != null) {
+                Text(
+                    text = "오늘 기준 측정값과 함께 저장됨",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ReFitSubtext,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(26.dp))
 
             Row(
@@ -113,6 +131,37 @@ fun ResultScreen(
                     label = "최대 상대 근활성",
                     value = "%.4f".format(result.maxActivation),
                     modifier = Modifier.padding(top = 14.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            if (result.calibrationRest != null && result.calibrationActive != null) {
+                HorizontalDivider(color = ReFitBorder)
+                Spacer(modifier = Modifier.height(22.dp))
+
+                Text(
+                    text = "오늘 기준값",
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Text(
+                    text = "운동 전 측정한 mock sEMG 기준값입니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitSubtext,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                MetricRow(
+                    label = "휴식 기준",
+                    value = "%.4f".format(result.calibrationRest)
+                )
+                MetricRow(
+                    label = "가벼운 수축 기준",
+                    value = "%.4f".format(result.calibrationActive),
+                    modifier = Modifier.padding(top = 10.dp)
                 )
             }
 
