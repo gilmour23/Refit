@@ -17,14 +17,31 @@ fun SessionScreen(
         ReFitScreen.HOME -> {
             HomeScreen(
                 history = state.history,
-                onStartRehab = viewModel::openIntro,
+                onStartRehab = viewModel::openSensorSetup,
                 onOpenHistory = viewModel::openHistory
+            )
+        }
+
+        ReFitScreen.SENSOR_SETUP -> {
+            SensorSetupScreen(
+                orthosisProfile = state.orthosisProfile,
+                onBack = viewModel::backToHome,
+                onContinue = viewModel::confirmSensorSetup
+            )
+        }
+
+        ReFitScreen.CALIBRATION -> {
+            CalibrationScreen(
+                state = state,
+                onBack = viewModel::backToSensorSetup,
+                onStartCalibration = viewModel::startCalibration,
+                onContinue = viewModel::continueAfterCalibration
             )
         }
 
         ReFitScreen.INTRO -> {
             ExerciseIntroScreen(
-                onBack = viewModel::backToHome,
+                onBack = viewModel::backToCalibration,
                 onStart = viewModel::startSession
             )
         }
