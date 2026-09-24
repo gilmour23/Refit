@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.refit.app.ui.theme.ReFitBorder
 import com.refit.app.ui.theme.ReFitPrimary
@@ -15,15 +16,16 @@ import com.refit.app.ui.theme.ReFitPrimary
 @Composable
 fun EmgGraph(
     samples: List<Float>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    graphHeight: Dp = 100.dp
 ) {
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(graphHeight)
     ) {
-        repeat(4) { index ->
-            val y = size.height * (index + 1) / 5f
+        repeat(3) { index ->
+            val y = size.height * (index + 1) / 4f
             drawLine(
                 color = ReFitBorder,
                 start = Offset(0f, y),
