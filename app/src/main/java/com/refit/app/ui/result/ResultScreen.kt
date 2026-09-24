@@ -1,6 +1,6 @@
 package com.refit.app.ui.result
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,8 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,171 +44,124 @@ fun ResultScreen(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 18.dp)
+                .padding(horizontal = 20.dp)
         ) {
+            Spacer(modifier = Modifier.height(28.dp))
+
             Text(
-                text = "재활 완료",
+                text = "오늘 재활을 마쳤어요.",
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Text(
-                text = "손목 폄 운동",
+                text = "손목 폄 운동 기록을 저장했습니다.",
                 style = MaterialTheme.typography.bodyLarge,
+                color = ReFitSubtext,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+
+            Spacer(modifier = Modifier.height(26.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                SummaryValue(
+                    label = "운동 시간",
+                    value = formatTime(result.durationSeconds)
+                )
+                SummaryValue(
+                    label = "수집 샘플",
+                    value = result.sampleCount.toString()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider(color = ReFitBorder)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "sEMG 기록",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Text(
+                text = "운동 중 기록된 센서 요약입니다.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = ReFitPrimarySoft
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = ReFitPrimarySoft,
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    .padding(18.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(18.dp)
-                ) {
-                    Text(
-                        text = "✓  오늘 재활이 저장되었습니다.",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = ReFitSuccess
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 18.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        SummaryItem(
-                            label = "운동 시간",
-                            value = formatTime(result.durationSeconds)
-                        )
-                        SummaryItem(
-                            label = "센서 샘플",
-                            value = result.sampleCount.toString()
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Text(
-                text = "sEMG 기록",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Text(
-                text = "운동 중 수집된 센서 측정값입니다.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = ReFitSubtext,
-                modifier = Modifier.padding(top = 3.dp)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                border = BorderStroke(1.dp, ReFitBorder),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    ResultMetricRow(
-                        label = "RMS",
-                        value = "%.4f".format(result.rms)
-                    )
-                    HorizontalDivider(
-                        color = ReFitBorder,
-                        modifier = Modifier.padding(vertical = 12.dp)
-                    )
-                    ResultMetricRow(
-                        label = "MAV",
-                        value = "%.4f".format(result.mav)
-                    )
-                    ResultMetricRow(
-                        label = "최대 상대 근활성",
-                        value = "%.4f".format(result.maxActivation),
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
-                }
+                MetricRow("RMS", "%.4f".format(result.rms))
+                MetricRow(
+                    label = "MAV",
+                    value = "%.4f".format(result.mav),
+                    modifier = Modifier.padding(top = 14.dp)
+                )
+                MetricRow(
+                    label = "최대 상대 근활성",
+                    value = "%.4f".format(result.maxActivation),
+                    modifier = Modifier.padding(top = 14.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(26.dp))
 
             Text(
-                text = "이전 세션과 비교",
-                style = MaterialTheme.typography.titleMedium
+                text = "이전 세션",
+                style = MaterialTheme.typography.titleLarge
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                border = BorderStroke(1.dp, ReFitBorder),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                if (result.previousRms == null) {
-                    Text(
-                        text = "비교할 이전 세션이 없습니다.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ReFitSubtext,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                } else {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "RMS 측정값",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ReFitSubtext
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            CompareItem(
-                                label = "이전 세션",
-                                value = "%.4f".format(result.previousRms)
-                            )
-                            CompareItem(
-                                label = "이번 세션",
-                                value = "%.4f".format(result.rms)
-                            )
-                        }
-
-                        Text(
-                            text = "변화량  " + "%+.4f".format(result.rms - result.previousRms),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = ReFitSubtext,
-                            modifier = Modifier.padding(top = 14.dp)
-                        )
-                    }
-                }
+            if (result.previousRms == null) {
+                Text(
+                    text = "아직 비교할 이전 기록이 없습니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitSubtext
+                )
+            } else {
+                MetricRow(
+                    label = "이전 RMS",
+                    value = "%.4f".format(result.previousRms)
+                )
+                MetricRow(
+                    label = "이번 RMS",
+                    value = "%.4f".format(result.rms),
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+                MetricRow(
+                    label = "차이",
+                    value = "%+.4f".format(result.rms - result.previousRms),
+                    modifier = Modifier.padding(top = 10.dp)
+                )
             }
 
+            Spacer(modifier = Modifier.height(18.dp))
+
             Text(
-                text = "현재 MVP는 mock sEMG 상대값을 사용합니다. 값의 증감은 회복 정도를 의미하지 않습니다.",
+                text = "RMS 등 센서값의 증감은 회복 정도를 직접 의미하지 않습니다.",
                 style = MaterialTheme.typography.bodySmall,
-                color = ReFitSubtext,
-                modifier = Modifier.padding(top = 14.dp)
+                color = ReFitSubtext
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = "✓ 기록 저장 완료",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ReFitSuccess
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -227,7 +178,7 @@ fun ResultScreen(
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
             Text(
-                text = "홈으로",
+                text = "홈으로 돌아가기",
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -235,7 +186,7 @@ fun ResultScreen(
 }
 
 @Composable
-private fun SummaryItem(
+private fun SummaryValue(
     label: String,
     value: String
 ) {
@@ -254,7 +205,7 @@ private fun SummaryItem(
 }
 
 @Composable
-private fun ResultMetricRow(
+private fun MetricRow(
     label: String,
     value: String,
     modifier: Modifier = Modifier
@@ -268,30 +219,10 @@ private fun ResultMetricRow(
             style = MaterialTheme.typography.bodyMedium,
             color = ReFitSubtext
         )
-
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold
-        )
-    }
-}
-
-@Composable
-private fun CompareItem(
-    label: String,
-    value: String
-) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = ReFitSubtext
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 3.dp)
         )
     }
 }
