@@ -181,6 +181,13 @@ class SessionViewModel(
         )
     }
 
+    fun backToCalibration() {
+        if (_uiState.value.running) return
+        _uiState.value = _uiState.value.copy(
+            screen = ReFitScreen.CALIBRATION
+        )
+    }
+
     fun openHistory() {
         if (_uiState.value.running) return
         _uiState.value = _uiState.value.copy(
