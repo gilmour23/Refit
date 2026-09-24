@@ -1,187 +1,137 @@
 # Re:Fit UI Specification V0.4
 
-## 1. 기준
+## Product framing
 
-- 기준 화면: 390 × 844
-- 구현: Android Jetpack Compose / Material 3
-- Layout grid: 8dp
-- 기본 좌우 margin: 20dp
-- Section 간격: 24–28dp
-- 같은 section 내부 간격: 8–16dp
-- Card radius: 12dp
-- Button radius: 10dp
-- 기본 버튼 높이: 52dp
-- Secondary 버튼 높이: 48dp
-- 그림자: 기본적으로 사용하지 않음
-- Gradient: 사용하지 않음
+Re:Fit is a **guided hand/wrist rehabilitation app with sEMG as supporting measurement data**.
 
-## 2. 색상
+The primary user task is not to inspect a sensor dashboard. The primary task is:
 
-| Token | Value | 용도 |
-|---|---|---|
-| Background | #F7F8FA | 앱 기본 배경 |
-| Surface | #FFFFFF | 카드 / 정보 영역 |
-| Text | #151A22 | 주요 텍스트 |
-| Subtext | #667085 | 보조 텍스트 |
-| Border | #E1E5EA | Divider / Border |
-| Primary | #1769E0 | Primary CTA / 추이 |
-| Primary Soft | #EEF4FF | 선택 / 강조 배경 |
-| Success | #1F8A5B | 센서 연결 / 저장 |
-| Success Soft | #EDF8F2 | Success background |
-| Danger | #C43D3D | 운동 종료 |
+1. understand today's rehabilitation task,
+2. perform the movement correctly,
+3. finish the session,
+4. review the recorded rehabilitation and sensor data.
 
-## 3. Typography
+sEMG is visible, but it does not dominate the exercise experience.
 
-- Screen title: 24sp Bold
-- Section title: 16sp SemiBold
-- Major metric: 20–24sp Bold
-- Body: 15sp Regular
-- Secondary body: 13sp Regular
-- Caption: 11sp Regular
+## Reference pattern
 
-실제 제품 폰트 리소스가 확정되기 전에는 Android Sans Serif를 사용합니다.
+The interaction model follows common digital rehabilitation products:
 
----
+- guided exercise content first,
+- large movement/video area,
+- simple repetition/set/session context,
+- sensor or performance feedback as secondary information,
+- clear session completion and history views.
 
-# 4. Home
+## Screen hierarchy
 
-## 목적
+### Home
 
-앱을 열었을 때 오늘 해야 할 재활을 즉시 이해하고 시작할 수 있어야 합니다.
+Purpose: start today's rehabilitation quickly.
 
-## 구조
+Content order:
 
-1. App title
-2. 사용자 이름 + 오늘 일정
-3. Today Rehab Card
-4. Weekly Goal
-5. Recent Activity
-6. History CTA
+1. Re:Fit
+2. Today's rehabilitation
+3. Today's program card
+4. Actual weekly completion progress from Room history
+5. Recent rehabilitation
+6. Full record link
 
-## Today Rehab Card
+Avoid dashboard-style KPI walls.
 
-- Width: screen width - 40dp
-- Padding: 16dp
-- Radius: 12dp
-- Border: 1dp
-- Shadow: none
+### Exercise preparation
 
-표시 정보:
-- 오늘의 재활
-- 손목 폄 운동
-- 약 10분 · 5세트
-- 센서 연결 준비
-- 재활 시작
+Purpose: understand the movement before starting.
 
-홈에는 RMS/MAV/최대값을 카드 형태로 대량 노출하지 않습니다.
-
----
-
-# 5. Exercise Intro
-
-## 목적
-
-센서 데이터보다 먼저 사용자가 올바른 동작을 이해하도록 합니다.
-
-## 구조
+Content order:
 
 1. Back
-2. 운동명
-3. 한 줄 설명
-4. 운동 영상/이미지 영역
-5. 운동 방법 4단계
-6. 반복/세트 목표
-7. 센서 상태
-8. 운동 시작
+2. Exercise title and explanation
+3. Large movement visual
+4. 10 reps / 5 sets / estimated time
+5. Three essential instructions
+6. Sensor readiness
+7. Start exercise
 
-## Media area
+### Live rehabilitation
 
-- Height: 190dp
-- 실제 운동 동작 콘텐츠가 준비되기 전에는 placeholder
-- 향후 정면/측면 animation 또는 영상 사용 가능
+Purpose: follow the movement.
 
----
+Priority order:
 
-# 6. Live Rehab
+1. Exercise movement visual
+2. Current instruction
+3. Session time
+4. Sensor connection and current relative activation
+5. Optional expandable sEMG waveform
 
-## 정보 우선순위
+The waveform is collapsed by default.
 
-1. 현재 해야 할 동작
-2. 반복/세트 진행
-3. 센서 연결 상태
-4. 근활성 데이터
-5. EMG waveform
-6. 운동 시간
-7. 운동 종료
+### Result
 
-EMG는 주 화면의 주인공이 아니라 재활 동작의 측정 정보입니다.
+Purpose: confirm completion and inspect recorded values without implying clinical recovery.
 
-## EMG 영역
+Content order:
 
-- Graph height: 약 150dp
-- 최근 200 samples 표시
-- UI 재렌더링 빈도와 실제 sensor sampling rate는 분리
-- 현재 Mock 데이터에서는 μV를 표시하지 않음
-- 실제 센서 확정 후 physical unit 결정
+1. Rehabilitation complete
+2. Session summary
+3. sEMG record
+4. Previous-session measurement comparison
+5. Interpretation warning
+6. Return home
 
----
+Do not use recovery score, health score, or wording that implies RMS change equals recovery.
 
-# 7. Result
+### Records
 
-## 목적
+Purpose: review completed rehabilitation over time.
 
-운동 직후 사용자에게 세션이 저장되었음을 알리고 핵심 측정값을 확인시킵니다.
+- Show total completed sessions.
+- Show the latest session time.
+- Only show a trend chart when 3 or more sessions exist.
+- Use up to the latest 7 sessions for the chart.
+- Keep raw session rows visible below.
 
-## 구조
+## Layout
 
-1. 재활 결과
-2. 운동명
-3. 저장 완료 state
-4. 측정값
-5. 이전 RMS 비교
-6. 데이터 해석 주의
-7. 확인
+- Target phone reference: 390 x 844 dp class
+- Horizontal margin: 20 dp
+- Section spacing: 20–30 dp
+- Card radius: 14–18 dp
+- Primary button height: 54 dp
+- Bottom actions must use Android navigation-bar padding.
+- Pages with variable content must scroll.
 
-## 금지 표현
+## Visual language
+
+- Background: #F7F8FA
+- Surface: white
+- Primary: #1769E0
+- Primary soft: #EEF4FF
+- Success: #1F8A5B
+- Border: #E1E5EA
+- Text: near black
+- No gradients
+- Minimal shadow
+- One primary action per screen
+
+## Current MVP constraints
+
+- sEMG is mock data.
+- Relative activation has no physical unit yet.
+- Automatic repetition detection is not implemented.
+- Automatic set tracking is not implemented.
+- RMS/MAV/peak are measurement summaries, not recovery scores.
+- Exercise visual is a schematic placeholder until validated video/animation is added.
+
+## Prohibited labels
+
+Do not display:
 
 - 회복률
 - 건강 점수
 - 근육 회복 +X%
 - AI가 판단한 상태
-
-RMS 변화는 단순 측정값 변화로 표현합니다.
-
----
-
-# 8. History
-
-## 목적
-
-장기 경과 확인.
-
-## 구조
-
-1. 화면 제목
-2. 최근 RMS 추이
-3. 세션 목록
-
-세션 목록은 큰 카드 반복이 아니라 단순한 list row + divider 방식으로 구성합니다.
-
-각 row:
-- 날짜/시간
-- 운동명
-- RMS
-- 운동 시간
-
----
-
-# 9. 다음 구현 우선순위
-
-1. 실제 Android 기기에서 V0.4 레이아웃 확인
-2. 390×844 외 화면에서 responsive 확인
-3. 실제 운동 영상/이미지 추가
-4. 실제 BLE sensor 결정
-5. BLE protocol 연결
-6. 실제 signal unit / preprocessing 확정
-7. 반복 횟수 감지
-8. therapist view
+- RMS 증가 = 호전
+- RMS 감소 = 악화
