@@ -447,9 +447,10 @@ class SessionViewModel(
     private fun recordSessionSample(value: Float) {
         aggregateCount += 1
         aggregateSumSquares += value.toDouble() * value.toDouble()
-        aggregateSumAbs += abs(value.toDouble())
-        if (value > aggregateMax) {
-            aggregateMax = value
+        val magnitude = abs(value)
+        aggregateSumAbs += magnitude.toDouble()
+        if (magnitude > aggregateMax) {
+            aggregateMax = magnitude
         }
     }
 
