@@ -114,7 +114,7 @@ fun LiveSessionScreen(
                         color = ReFitSubtext
                     )
                     Text(
-                        text = if (state.connected) "●  센서 연결됨" else "센서 연결 종료",
+                        text = if (state.connected) "●  Mock 신호 수신 중" else "Mock 신호 종료",
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (state.connected) ReFitSuccess else ReFitSubtext,
                         modifier = Modifier.padding(top = 2.dp)
@@ -125,7 +125,7 @@ fun LiveSessionScreen(
                     horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        text = "현재 상대 근활성",
+                        text = "현재 sEMG 신호값",
                         style = MaterialTheme.typography.bodySmall,
                         color = ReFitSubtext
                     )
@@ -149,7 +149,7 @@ fun LiveSessionScreen(
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Text(
-                    text = signalFeedback(state.currentActivation),
+                    text = "Mock sEMG 기록 중 · 신호값은 데모 데이터입니다.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = ReFitPrimary
@@ -233,14 +233,6 @@ fun LiveSessionScreen(
                 )
             }
         }
-    }
-}
-
-private fun signalFeedback(value: Float): String {
-    return when {
-        value < 0.04f -> "신호가 약합니다 · 센서 접촉을 확인하세요"
-        value > 0.68f -> "신호 변화 감지 · 동작을 천천히 유지하세요"
-        else -> "신호 안정 · 기록 중"
     }
 }
 
