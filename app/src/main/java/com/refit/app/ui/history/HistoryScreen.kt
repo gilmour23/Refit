@@ -160,7 +160,11 @@ private fun SummaryValue(
 private fun TrendSection(
     sessions: List<RehabSessionEntity>
 ) {
-    val recent = sessions.take(7).reversed()
+    val latestExercise = sessions.firstOrNull()?.exerciseName
+    val recent = sessions
+        .filter { latestExercise == null || it.exerciseName == latestExercise }
+        .take(7)
+        .reversed()
 
     if (recent.size < 3) {
         Column(
