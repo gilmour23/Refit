@@ -14,6 +14,11 @@ interface RehabSessionDao {
     @Query("SELECT * FROM rehab_sessions ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<RehabSessionEntity>>
 
-    @Query("SELECT * FROM rehab_sessions ORDER BY createdAt DESC LIMIT 1")
-    suspend fun getLatest(): RehabSessionEntity?
+    @Query("""
+        SELECT * FROM rehab_sessions
+        WHERE exerciseName = :exerciseName
+        ORDER BY createdAt DESC
+        LIMIT 1
+    """)
+    suspend fun getLatestForExercise(exerciseName: String): RehabSessionEntity?
 }
