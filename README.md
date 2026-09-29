@@ -92,6 +92,8 @@ SessionViewModel
 
 ## 로컬 빌드
 
+현재는 **로컬 Gradle Wrapper 빌드가 canonical build path**입니다. GitHub-hosted runner가 안정화되기 전까지 PR 자동 CI에는 의존하지 않습니다.
+
 ### Windows
 
 JDK 17과 Android SDK가 설치된 상태에서:
@@ -100,7 +102,16 @@ JDK 17과 Android SDK가 설치된 상태에서:
 .\scripts\build_internal.ps1
 ```
 
-또는 직접:
+이 스크립트는 빌드 후 다음 항목을 자동 검증합니다.
+
+- `debuggable=false`
+- Compose `PreviewActivity` 미포함
+- `allowBackup=false`
+- `usesCleartextTraffic=false`
+- `INTERNET` 권한 없음
+- SHA-256 출력
+
+직접 Gradle만 실행하려면:
 
 ```powershell
 .\gradlew.bat --no-daemon :app:assembleInternal
@@ -117,6 +128,12 @@ app/build/outputs/apk/internal/app-internal.apk
 ```bash
 ./scripts/build_internal.sh
 ```
+
+Unix 스크립트도 동일한 hardening 검증과 SHA-256 출력을 수행합니다.
+
+### GitHub Actions
+
+워크플로는 현재 `workflow_dispatch` 수동 실행만 유지합니다. 저장소 소유 계정의 Actions/runner 문제가 정리되면 PR 자동 CI를 다시 활성화합니다.
 
 ## 빌드 타입
 
