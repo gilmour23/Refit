@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.refit.app.ui.components.BackNavButton
 import com.refit.app.ui.theme.ReFitBorder
+import com.refit.app.ui.theme.ReFitDanger
 import com.refit.app.ui.theme.ReFitButtonShape
 import com.refit.app.ui.theme.ReFitPrimary
 import com.refit.app.ui.theme.ReFitSubtext
@@ -30,6 +31,7 @@ import com.refit.app.ui.theme.ReFitSuccess
 
 @Composable
 fun ExerciseIntroScreen(
+    errorMessage: String?,
     onBack: () -> Unit,
     onStart: () -> Unit
 ) {
@@ -109,17 +111,26 @@ fun ExerciseIntroScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             Text(
-                text = "●  sEMG 센서 연결 준비됨",
+                text = "●  Mock sEMG 준비됨",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSuccess
             )
 
             Text(
-                text = "센서 신호는 운동 중 자동 기록되며 동작 안내와 별도로 표시됩니다.",
+                text = "현재 빌드는 mock sEMG 신호를 사용하며 운동 중 자동 기록됩니다.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 5.dp)
             )
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitDanger,
+                    modifier = Modifier.padding(top = 14.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
