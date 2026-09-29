@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.refit.app.ui.components.BackNavButton
 import com.refit.app.ui.theme.ReFitBorder
 import com.refit.app.ui.theme.ReFitButtonShape
 import com.refit.app.ui.theme.ReFitPrimary
@@ -58,11 +59,9 @@ fun SensorSetupScreen(
         ) {
             Spacer(modifier = Modifier.height(18.dp))
 
-            Text(
-                text = "‹  홈",
-                style = MaterialTheme.typography.bodyLarge,
-                color = ReFitSubtext,
-                modifier = Modifier.clickable(onClick = onBack)
+            BackNavButton(
+                label = "홈",
+                onClick = onBack
             )
 
             Spacer(modifier = Modifier.height(26.dp))
