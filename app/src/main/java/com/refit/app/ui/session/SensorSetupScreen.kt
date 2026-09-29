@@ -111,7 +111,7 @@ fun SensorSetupScreen(
                         .background(ReFitSuccess, CircleShape)
                 )
                 Text(
-                    text = "현재 세션에 이 보조기를 연결합니다.",
+                    text = "현재 재활 프로그램에 사용할 보조기입니다.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ReFitSuccess,
                     modifier = Modifier.padding(start = 8.dp)
