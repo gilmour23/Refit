@@ -10,8 +10,8 @@ class RehabSessionRepository(
     fun observeAll(): Flow<List<RehabSessionEntity>> =
         dao.observeAll()
 
-    suspend fun getLatest(): RehabSessionEntity? =
-        dao.getLatest()
+    suspend fun getLatestForExercise(exerciseName: String): RehabSessionEntity? =
+        dao.getLatestForExercise(exerciseName)
 
     suspend fun insert(session: RehabSessionEntity): Long =
         dao.insert(session)
