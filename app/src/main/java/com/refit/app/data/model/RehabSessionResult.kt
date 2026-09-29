@@ -10,5 +10,7 @@ data class RehabSessionResult(
     val savedSessionId: Long? = null,
     val orthosisProfile: String = "맞춤 손목 보조기",
     val calibrationRest: Float? = null,
-    val calibrationActive: Float? = null
+    val calibrationActive: Float? = null,
+    val saveSucceeded: Boolean = true,
+    val saveErrorMessage: String? = null
 )
