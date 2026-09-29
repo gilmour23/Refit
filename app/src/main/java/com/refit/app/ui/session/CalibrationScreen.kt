@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.refit.app.ui.components.BackNavButton
 import com.refit.app.ui.theme.ReFitButtonShape
 import com.refit.app.ui.theme.ReFitPrimary
 import com.refit.app.ui.theme.ReFitPrimaryDark
@@ -41,15 +42,11 @@ fun CalibrationScreen(
     ) {
         Spacer(modifier = Modifier.height(18.dp))
 
-        Text(
-            text = "‹  센서 확인",
-            style = MaterialTheme.typography.bodyLarge,
-            color = ReFitSubtext,
-            modifier = Modifier.clickable(
-                enabled = state.calibrationPhase == CalibrationPhase.IDLE ||
-                    state.calibrationPhase == CalibrationPhase.COMPLETE,
-                onClick = onBack
-            )
+        BackNavButton(
+            label = "센서 확인",
+            onClick = onBack,
+            enabled = state.calibrationPhase == CalibrationPhase.IDLE ||
+                state.calibrationPhase == CalibrationPhase.COMPLETE
         )
 
         Spacer(modifier = Modifier.height(28.dp))
