@@ -9,13 +9,16 @@ import com.refit.app.data.model.RehabSessionResult
 import com.refit.app.data.repository.RehabSessionRepository
 import com.refit.app.data.source.EmgDataSource
 import com.refit.app.data.source.MockEmgDataSource
-import com.refit.app.signal.EmgSignalProcessor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.sqrt
 
 enum class ReFitScreen {
     HOME,
@@ -49,12 +52,15 @@ data class SessionUiState(
     val calibrationPhase: CalibrationPhase = CalibrationPhase.IDLE,
     val calibrationProgress: Float = 0f,
     val calibrationRest: Float? = null,
-    val calibrationActive: Float? = null
+    val calibrationActive: Float? = null,
+    val errorMessage: String? = null
 )
 
 class SessionViewModel(
     application: Application
 ) : AndroidViewModel(application) {
+
+    private val exerciseName = "손목 폄 운동"
 
     private val dataSource: EmgDataSource = MockEmgDataSource()
 
@@ -69,15 +75,24 @@ class SessionViewModel(
     private var timerJob: Job? = null
     private var calibrationJob: Job? = null
 
-    private val sessionSamples = mutableListOf<Float>()
+    private var aggregateCount = 0
+    private var aggregateSumSquares = 0.0
+    private var aggregateSumAbs = 0.0
+    private var aggregateMax = 0f
 
     init {
         viewModelScope.launch {
-            repository.observeAll().collect { history ->
-                _uiState.value = _uiState.value.copy(
-                    history = history
-                )
-            }
+            repository.observeAll()
+                .catch {
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "재활 기록을 불러오지 못했습니다."
+                    )
+                }
+                .collect { history ->
+                    _uiState.value = _uiState.value.copy(
+                        history = history
+                    )
+                }
         }
     }
 
@@ -88,7 +103,10 @@ class SessionViewModel(
             setupConfirmed = false,
             calibrationPhase = CalibrationPhase.IDLE,
             calibrationProgress = 0f,
-            result = null
+            calibrationRest = null,
+            calibrationActive = null,
+            result = null,
+            errorMessage = null
         )
     }
 
@@ -98,78 +116,95 @@ class SessionViewModel(
             screen = ReFitScreen.CALIBRATION,
             setupConfirmed = true,
             calibrationPhase = CalibrationPhase.IDLE,
-            calibrationProgress = 0f
+            calibrationProgress = 0f,
+            errorMessage = null
         )
     }
 
     fun startCalibration() {
         if (calibrationJob?.isActive == true || _uiState.value.running) return
 
+        _uiState.value = _uiState.value.copy(errorMessage = null)
+
         calibrationJob = viewModelScope.launch {
-            dataSource.connect()
+            var collectorJob: Job? = null
 
-            val collected = mutableListOf<Float>()
+            try {
+                dataSource.connect()
 
-            val collectorJob = launch {
-                dataSource.observeEmg().collect { sample ->
-                    collected += sample.value
+                val collected = mutableListOf<Float>()
+
+                collectorJob = launch {
+                    dataSource.observeEmg().collect { sample ->
+                        collected += sample.value
+                        _uiState.value = _uiState.value.copy(
+                            connected = true,
+                            currentActivation = sample.value
+                        )
+                    }
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    calibrationPhase = CalibrationPhase.REST,
+                    calibrationProgress = 0f
+                )
+
+                repeat(30) { index ->
+                    delay(100)
                     _uiState.value = _uiState.value.copy(
-                        connected = true,
-                        currentActivation = sample.value
+                        calibrationProgress = (index + 1) / 30f
                     )
                 }
-            }
 
-            _uiState.value = _uiState.value.copy(
-                calibrationPhase = CalibrationPhase.REST,
-                calibrationProgress = 0f
-            )
+                val restCount = collected.size
+                val restBaseline = collected
+                    .takeIf { it.isNotEmpty() }
+                    ?.average()
+                    ?.toFloat()
+                    ?: 0f
 
-            repeat(30) { index ->
-                delay(100)
                 _uiState.value = _uiState.value.copy(
-                    calibrationProgress = (index + 1) / 30f
+                    calibrationPhase = CalibrationPhase.CONTRACT,
+                    calibrationProgress = 0f,
+                    calibrationRest = restBaseline
                 )
-            }
 
-            val restCount = collected.size
-            val restSamples = collected.toList()
-            val restBaseline = restSamples
-                .takeIf { it.isNotEmpty() }
-                ?.average()
-                ?.toFloat()
-                ?: 0f
+                repeat(30) { index ->
+                    delay(100)
+                    _uiState.value = _uiState.value.copy(
+                        calibrationProgress = (index + 1) / 30f
+                    )
+                }
 
-            _uiState.value = _uiState.value.copy(
-                calibrationPhase = CalibrationPhase.CONTRACT,
-                calibrationProgress = 0f,
-                calibrationRest = restBaseline
-            )
+                val activeSamples = collected.drop(restCount)
+                val activeBaseline = activeSamples
+                    .takeIf { it.isNotEmpty() }
+                    ?.average()
+                    ?.toFloat()
+                    ?: restBaseline
 
-            repeat(30) { index ->
-                delay(100)
                 _uiState.value = _uiState.value.copy(
-                    calibrationProgress = (index + 1) / 30f
+                    calibrationPhase = CalibrationPhase.COMPLETE,
+                    calibrationProgress = 1f,
+                    calibrationRest = restBaseline,
+                    calibrationActive = activeBaseline,
+                    errorMessage = null
                 )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    calibrationPhase = CalibrationPhase.IDLE,
+                    calibrationProgress = 0f,
+                    calibrationRest = null,
+                    calibrationActive = null,
+                    errorMessage = "기준 측정 중 오류가 발생했습니다. 다시 시도해주세요."
+                )
+            } finally {
+                collectorJob?.cancel()
+                runCatching { dataSource.disconnect() }
+                _uiState.value = _uiState.value.copy(connected = false)
             }
-
-            val activeSamples = collected.drop(restCount)
-            val activeBaseline = activeSamples
-                .takeIf { it.isNotEmpty() }
-                ?.average()
-                ?.toFloat()
-                ?: restBaseline
-
-            collectorJob.cancel()
-            dataSource.disconnect()
-
-            _uiState.value = _uiState.value.copy(
-                connected = false,
-                calibrationPhase = CalibrationPhase.COMPLETE,
-                calibrationProgress = 1f,
-                calibrationRest = restBaseline,
-                calibrationActive = activeBaseline
-            )
         }
     }
 
@@ -177,14 +212,16 @@ class SessionViewModel(
         if (_uiState.value.calibrationPhase != CalibrationPhase.COMPLETE) return
 
         _uiState.value = _uiState.value.copy(
-            screen = ReFitScreen.INTRO
+            screen = ReFitScreen.INTRO,
+            errorMessage = null
         )
     }
 
     fun backToCalibration() {
         if (_uiState.value.running) return
         _uiState.value = _uiState.value.copy(
-            screen = ReFitScreen.CALIBRATION
+            screen = ReFitScreen.CALIBRATION,
+            errorMessage = null
         )
     }
 
@@ -192,19 +229,20 @@ class SessionViewModel(
         if (_uiState.value.running) return
         _uiState.value = _uiState.value.copy(
             screen = ReFitScreen.HISTORY,
-            result = null
+            result = null,
+            errorMessage = null
         )
     }
 
     fun backToHome() {
         if (_uiState.value.running) return
+
         calibrationJob?.cancel()
         calibrationJob = null
-
-        sessionSamples.clear()
+        resetSessionMetrics()
 
         viewModelScope.launch {
-            dataSource.disconnect()
+            runCatching { dataSource.disconnect() }
         }
 
         _uiState.value = _uiState.value.copy(
@@ -218,7 +256,10 @@ class SessionViewModel(
             isSaving = false,
             setupConfirmed = false,
             calibrationPhase = CalibrationPhase.IDLE,
-            calibrationProgress = 0f
+            calibrationProgress = 0f,
+            calibrationRest = null,
+            calibrationActive = null,
+            errorMessage = null
         )
     }
 
@@ -229,57 +270,77 @@ class SessionViewModel(
         calibrationJob = null
 
         viewModelScope.launch {
-            dataSource.disconnect()
+            runCatching { dataSource.disconnect() }
         }
 
         _uiState.value = _uiState.value.copy(
             screen = ReFitScreen.SENSOR_SETUP,
             connected = false,
             calibrationPhase = CalibrationPhase.IDLE,
-            calibrationProgress = 0f
+            calibrationProgress = 0f,
+            calibrationRest = null,
+            calibrationActive = null,
+            errorMessage = null
         )
     }
 
     fun startSession() {
         if (_uiState.value.running || _uiState.value.isSaving) return
 
-        sessionSamples.clear()
+        resetSessionMetrics()
+        _uiState.value = _uiState.value.copy(errorMessage = null)
 
         emgJob = viewModelScope.launch {
-            dataSource.connect()
-
-            _uiState.value = _uiState.value.copy(
-                screen = ReFitScreen.LIVE,
-                connected = true,
-                running = true,
-                samples = emptyList(),
-                currentActivation = 0f,
-                elapsedSeconds = 0L,
-                result = null,
-                isSaving = false
-            )
-
-            dataSource.observeEmg().collect { sample ->
-                sessionSamples += sample.value
-
-                val visibleSamples =
-                    (_uiState.value.samples + sample.value).takeLast(200)
+            try {
+                dataSource.connect()
 
                 _uiState.value = _uiState.value.copy(
-                    samples = visibleSamples,
-                    currentActivation = sample.value
+                    screen = ReFitScreen.LIVE,
+                    connected = true,
+                    running = true,
+                    samples = emptyList(),
+                    currentActivation = 0f,
+                    elapsedSeconds = 0L,
+                    result = null,
+                    isSaving = false,
+                    errorMessage = null
                 )
-            }
-        }
 
-        timerJob = viewModelScope.launch {
-            while (true) {
-                delay(1000)
-                if (_uiState.value.running) {
+                timerJob = launch {
+                    while (true) {
+                        delay(1000)
+                        if (_uiState.value.running) {
+                            _uiState.value = _uiState.value.copy(
+                                elapsedSeconds = _uiState.value.elapsedSeconds + 1
+                            )
+                        }
+                    }
+                }
+
+                dataSource.observeEmg().collect { sample ->
+                    recordSessionSample(sample.value)
+
+                    val visibleSamples =
+                        (_uiState.value.samples + sample.value).takeLast(200)
+
                     _uiState.value = _uiState.value.copy(
-                        elapsedSeconds = _uiState.value.elapsedSeconds + 1
+                        samples = visibleSamples,
+                        currentActivation = sample.value
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                timerJob?.cancel()
+                runCatching { dataSource.disconnect() }
+                _uiState.value = _uiState.value.copy(
+                    screen = ReFitScreen.INTRO,
+                    connected = false,
+                    running = false,
+                    samples = emptyList(),
+                    currentActivation = 0f,
+                    errorMessage = "sEMG 신호를 시작하지 못했습니다. 다시 시도해주세요."
+                )
             }
         }
     }
@@ -288,18 +349,24 @@ class SessionViewModel(
         if (!_uiState.value.running) return
 
         val duration = _uiState.value.elapsedSeconds
-        val samplesSnapshot = sessionSamples.toList()
         val createdAt = System.currentTimeMillis()
         val orthosisProfile = _uiState.value.orthosisProfile
         val restBaseline = _uiState.value.calibrationRest
         val activeBaseline = _uiState.value.calibrationActive
 
+        val countSnapshot = aggregateCount
+        val rmsSnapshot =
+            if (countSnapshot > 0) sqrt(aggregateSumSquares / countSnapshot).toFloat() else 0f
+        val mavSnapshot =
+            if (countSnapshot > 0) (aggregateSumAbs / countSnapshot).toFloat() else 0f
+        val maxSnapshot = aggregateMax
+
         val baseResult = RehabSessionResult(
             durationSeconds = duration,
-            sampleCount = samplesSnapshot.size,
-            rms = EmgSignalProcessor.rms(samplesSnapshot),
-            mav = EmgSignalProcessor.mav(samplesSnapshot),
-            maxActivation = samplesSnapshot.maxOrNull() ?: 0f,
+            sampleCount = countSnapshot,
+            rms = rmsSnapshot,
+            mav = mavSnapshot,
+            maxActivation = maxSnapshot,
             orthosisProfile = orthosisProfile,
             calibrationRest = restBaseline,
             calibrationActive = activeBaseline
@@ -311,42 +378,79 @@ class SessionViewModel(
         _uiState.value = _uiState.value.copy(
             connected = false,
             running = false,
-            isSaving = true
+            isSaving = true,
+            errorMessage = null
         )
 
         viewModelScope.launch {
-            dataSource.disconnect()
+            runCatching { dataSource.disconnect() }
 
-            val previous = repository.getLatest()
+            var previousRms: Float? = null
 
-            val sessionId = repository.insert(
-                RehabSessionEntity(
-                    createdAt = createdAt,
-                    exerciseName = "손목 폄 운동",
-                    durationSeconds = duration,
-                    sampleCount = samplesSnapshot.size,
-                    rms = baseResult.rms,
-                    mav = baseResult.mav,
-                    maxActivation = baseResult.maxActivation,
-                    orthosisProfile = orthosisProfile,
-                    calibrationRest = restBaseline,
-                    calibrationActive = activeBaseline
+            try {
+                previousRms = repository
+                    .getLatestForExercise(exerciseName)
+                    ?.rms
+
+                val sessionId = repository.insert(
+                    RehabSessionEntity(
+                        createdAt = createdAt,
+                        exerciseName = exerciseName,
+                        durationSeconds = duration,
+                        sampleCount = countSnapshot,
+                        rms = baseResult.rms,
+                        mav = baseResult.mav,
+                        maxActivation = baseResult.maxActivation,
+                        orthosisProfile = orthosisProfile,
+                        calibrationRest = restBaseline,
+                        calibrationActive = activeBaseline
+                    )
                 )
-            )
 
-            _uiState.value = _uiState.value.copy(
-                screen = ReFitScreen.RESULT,
-                result = baseResult.copy(
-                    previousRms = previous?.rms,
-                    savedSessionId = sessionId
-                ),
-                isSaving = false
-            )
+                _uiState.value = _uiState.value.copy(
+                    screen = ReFitScreen.RESULT,
+                    result = baseResult.copy(
+                        previousRms = previousRms,
+                        savedSessionId = sessionId,
+                        saveSucceeded = true,
+                        saveErrorMessage = null
+                    ),
+                    isSaving = false
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    screen = ReFitScreen.RESULT,
+                    result = baseResult.copy(
+                        previousRms = previousRms,
+                        savedSessionId = null,
+                        saveSucceeded = false,
+                        saveErrorMessage = "기기 내 기록 저장에 실패했습니다."
+                    ),
+                    isSaving = false,
+                    errorMessage = "기기 내 기록 저장에 실패했습니다."
+                )
+            }
         }
     }
 
     fun resetSession() {
         backToHome()
+    }
+
+    private fun resetSessionMetrics() {
+        aggregateCount = 0
+        aggregateSumSquares = 0.0
+        aggregateSumAbs = 0.0
+        aggregateMax = 0f
+    }
+
+    private fun recordSessionSample(value: Float) {
+        aggregateCount += 1
+        aggregateSumSquares += value.toDouble() * value.toDouble()
+        aggregateSumAbs += abs(value.toDouble())
+        if (value > aggregateMax) {
+            aggregateMax = value
+        }
     }
 
     override fun onCleared() {
