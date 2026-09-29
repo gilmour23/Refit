@@ -52,7 +52,7 @@ fun AnimatedWristExerciseCard(
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = 4000,
+                durationMillis = 5000,
                 easing = LinearEasing
             ),
             repeatMode = RepeatMode.Restart
@@ -61,22 +61,22 @@ fun AnimatedWristExerciseCard(
     )
 
     val phase = when {
-        cycle < 0.25f -> WristMotionPhase.LIFT
-        cycle < 0.65f -> WristMotionPhase.HOLD
-        cycle < 0.95f -> WristMotionPhase.LOWER
+        cycle < 0.20f -> WristMotionPhase.LIFT
+        cycle < 0.60f -> WristMotionPhase.HOLD
+        cycle < 0.90f -> WristMotionPhase.LOWER
         else -> WristMotionPhase.REST
     }
 
     val wristAngle = when (phase) {
         WristMotionPhase.LIFT -> {
-            val local = (cycle / 0.25f).coerceIn(0f, 1f)
+            val local = (cycle / 0.20f).coerceIn(0f, 1f)
             -35f * FastOutSlowInEasing.transform(local)
         }
 
         WristMotionPhase.HOLD -> -35f
 
         WristMotionPhase.LOWER -> {
-            val local = ((cycle - 0.65f) / 0.30f).coerceIn(0f, 1f)
+            val local = ((cycle - 0.60f) / 0.30f).coerceIn(0f, 1f)
             -35f * (1f - FastOutSlowInEasing.transform(local))
         }
 
