@@ -41,6 +41,7 @@ fun SessionScreen(
 
         ReFitScreen.INTRO -> {
             ExerciseIntroScreen(
+                errorMessage = state.errorMessage,
                 onBack = viewModel::backToCalibration,
                 onStart = viewModel::startSession
             )
