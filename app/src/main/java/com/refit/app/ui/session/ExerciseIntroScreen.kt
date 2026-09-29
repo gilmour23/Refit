@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.refit.app.ui.components.BackNavButton
 import com.refit.app.ui.theme.ReFitBorder
 import com.refit.app.ui.theme.ReFitButtonShape
 import com.refit.app.ui.theme.ReFitPrimary
@@ -45,11 +46,9 @@ fun ExerciseIntroScreen(
         ) {
             Spacer(modifier = Modifier.height(18.dp))
 
-            Text(
-                text = "‹  오늘의 재활",
-                style = MaterialTheme.typography.bodyLarge,
-                color = ReFitSubtext,
-                modifier = Modifier.clickable(onClick = onBack)
+            BackNavButton(
+                label = "오늘의 재활",
+                onClick = onBack
             )
 
             Spacer(modifier = Modifier.height(26.dp))
