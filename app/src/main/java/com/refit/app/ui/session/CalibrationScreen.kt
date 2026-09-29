@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.refit.app.ui.components.BackNavButton
 import com.refit.app.ui.theme.ReFitButtonShape
+import com.refit.app.ui.theme.ReFitDanger
 import com.refit.app.ui.theme.ReFitPrimary
 import com.refit.app.ui.theme.ReFitPrimaryDark
 import com.refit.app.ui.theme.ReFitPrimarySoft
@@ -149,6 +150,15 @@ fun CalibrationScreen(
             style = MaterialTheme.typography.bodySmall,
             color = ReFitSubtext
         )
+
+        if (state.errorMessage != null) {
+            Text(
+                text = state.errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = ReFitDanger,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 
