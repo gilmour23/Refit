@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.refit.app.data.model.RehabSessionResult
 import com.refit.app.ui.theme.ReFitBorder
 import com.refit.app.ui.theme.ReFitButtonShape
+import com.refit.app.ui.theme.ReFitDanger
 import com.refit.app.ui.theme.ReFitPrimary
 import com.refit.app.ui.theme.ReFitPrimarySoft
 import com.refit.app.ui.theme.ReFitSubtext
@@ -54,7 +55,11 @@ fun ResultScreen(
             )
 
             Text(
-                text = "손목 폄 운동 기록을 저장했습니다.",
+                text = if (result.saveSucceeded) {
+                    "손목 폄 운동 기록을 저장했습니다."
+                } else {
+                    "운동 결과를 계산했습니다. 기록 저장 상태를 확인해주세요."
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 6.dp)
@@ -128,7 +133,7 @@ fun ResultScreen(
                     modifier = Modifier.padding(top = 14.dp)
                 )
                 MetricRow(
-                    label = "최대 상대 근활성",
+                    label = "최대 sEMG 신호값",
                     value = "%.4f".format(result.maxActivation),
                     modifier = Modifier.padding(top = 14.dp)
                 )
@@ -208,10 +213,23 @@ fun ResultScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = "✓ 기록 저장 완료",
+                text = if (result.saveSucceeded) {
+                    "✓ 기록 저장 완료"
+                } else {
+                    "기기 내 기록 저장 실패"
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = ReFitSuccess
+                color = if (result.saveSucceeded) ReFitSuccess else ReFitDanger
             )
+
+            if (!result.saveSucceeded && result.saveErrorMessage != null) {
+                Text(
+                    text = result.saveErrorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ReFitSubtext,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
