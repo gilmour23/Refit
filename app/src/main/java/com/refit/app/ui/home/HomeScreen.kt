@@ -300,7 +300,9 @@ private fun RecentSessionRow(
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = formatDateTime(session.createdAt) + " · RMS " + "%.4f".format(session.rms),
+                text = formatDateTime(session.createdAt) + " · " +
+                    (if (session.signalSource == "MOCK") "데모" else "BLE") +
+                    " · RMS " + "%.4f".format(session.rms),
                 style = MaterialTheme.typography.bodySmall,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 4.dp)
