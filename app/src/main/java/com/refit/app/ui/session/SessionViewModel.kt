@@ -8,6 +8,7 @@ import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.data.model.RehabSessionResult
 import com.refit.app.data.repository.RehabSessionRepository
 import com.refit.app.data.source.EmgDataSource
+import com.refit.app.data.source.EmgSourceMode
 import com.refit.app.data.source.MockEmgDataSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -53,7 +54,8 @@ data class SessionUiState(
     val calibrationProgress: Float = 0f,
     val calibrationRest: Float? = null,
     val calibrationActive: Float? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val sourceMode: EmgSourceMode = EmgSourceMode.MOCK
 )
 
 class SessionViewModel(
@@ -68,7 +70,9 @@ class SessionViewModel(
         ReFitDatabase.getInstance(application).rehabSessionDao()
     )
 
-    private val _uiState = MutableStateFlow(SessionUiState())
+    private val _uiState = MutableStateFlow(
+        SessionUiState(sourceMode = dataSource.mode)
+    )
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
 
     private var emgJob: Job? = null
@@ -136,7 +140,7 @@ class SessionViewModel(
 
                 collectorJob = launch {
                     dataSource.observeEmg().collect { sample ->
-                        collected += sample.value
+                        collected += abs(sample.value)
                         _uiState.value = _uiState.value.copy(
                             connected = true,
                             currentActivation = sample.value
