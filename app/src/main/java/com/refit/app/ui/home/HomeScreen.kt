@@ -137,7 +137,7 @@ fun HomeScreen(
                             .background(ReFitSurface, CircleShape)
                     )
                     Text(
-                        text = if (sourceMode.isMock) "데모 sEMG 모드" else "BLE sEMG 센서 사용",
+                        text = if (sourceMode.isMock) "예시 sEMG 데이터" else "BLE sEMG 센서 사용",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ReFitSurface,
                         modifier = Modifier.padding(start = 8.dp)
@@ -301,7 +301,7 @@ private fun RecentSessionRow(
             )
             Text(
                 text = formatDateTime(session.createdAt) + " · " +
-                    (if (session.signalSource == "MOCK") "데모" else "BLE") +
+                    (if (session.signalSource == "MOCK") "예시" else "BLE") +
                     " · RMS " + "%.4f".format(session.rms),
                 style = MaterialTheme.typography.bodySmall,
                 color = ReFitSubtext,
