@@ -154,7 +154,7 @@ fun LiveSessionScreen(
             ) {
                 Text(
                     text = if (state.sourceMode.isMock) {
-                        "예시 sEMG 기록 중 · 신호값은 생성된 테스트 데이터입니다."
+                        "예시 sEMG 기록 중 · 현재 파형은 사용자 움직임과 연동되지 않은 시연용 데이터입니다."
                     } else {
                         "sEMG 센서 기록 중"
                     },
@@ -165,7 +165,7 @@ fun LiveSessionScreen(
 
                 if (state.calibrationRest != null && state.calibrationActive != null) {
                     Text(
-                        text = "오늘 측정한 기준값을 적용해 기록 중",
+                        text = if (state.sourceMode.isMock) "앞서 생성한 예시 기준값을 적용해 기록 중" else "오늘 측정한 기준값을 적용해 기록 중",
                         style = MaterialTheme.typography.bodySmall,
                         color = ReFitSubtext,
                         modifier = Modifier.padding(top = 3.dp)
@@ -195,7 +195,7 @@ fun LiveSessionScreen(
                         .padding(14.dp)
                 ) {
                     Text(
-                        text = if (state.sourceMode.isMock) "예시 sEMG · 단위 미정" else "sEMG · 센서 원시값",
+                        text = if (state.sourceMode.isMock) "예시 sEMG 파형 · 시연용 무단위 값" else "sEMG · 센서 원시값",
                         style = MaterialTheme.typography.bodySmall,
                         color = ReFitSubtext
                     )
