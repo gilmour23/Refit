@@ -165,7 +165,7 @@ fun SensorSetupScreen(
                 )
                 Text(
                     text = if (sourceMode.isMock) {
-                        "현재 빌드는 실제 BLE 센서 대신 생성된 데모 sEMG 신호를 사용합니다."
+                        "현재 빌드는 실제 BLE 센서 대신 생성된 예시 sEMG 신호를 사용합니다."
                     } else {
                         "이번 세션은 실제 BLE sEMG 센서 신호를 사용합니다."
                     },
