@@ -115,7 +115,7 @@ fun LiveSessionScreen(
                     )
                     Text(
                         text = if (state.connected) {
-                            if (state.sourceMode.isMock) "●  데모 신호 수신 중" else "●  BLE 센서 신호 수신 중"
+                            if (state.sourceMode.isMock) "●  예시 데이터 수신 중" else "●  BLE 센서 신호 수신 중"
                         } else {
                             "신호 수신 종료"
                         },
@@ -154,7 +154,7 @@ fun LiveSessionScreen(
             ) {
                 Text(
                     text = if (state.sourceMode.isMock) {
-                        "데모 sEMG 기록 중 · 신호값은 생성된 테스트 데이터입니다."
+                        "예시 sEMG 기록 중 · 신호값은 생성된 테스트 데이터입니다."
                     } else {
                         "sEMG 센서 기록 중"
                     },
@@ -195,7 +195,7 @@ fun LiveSessionScreen(
                         .padding(14.dp)
                 ) {
                     Text(
-                        text = if (state.sourceMode.isMock) "데모 sEMG · 단위 미정" else "sEMG · 센서 원시값",
+                        text = if (state.sourceMode.isMock) "예시 sEMG · 단위 미정" else "sEMG · 센서 원시값",
                         style = MaterialTheme.typography.bodySmall,
                         color = ReFitSubtext
                     )
