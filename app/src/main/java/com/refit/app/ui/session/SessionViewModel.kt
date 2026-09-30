@@ -10,6 +10,7 @@ import com.refit.app.data.repository.RehabSessionRepository
 import com.refit.app.data.source.EmgDataSource
 import com.refit.app.data.source.EmgSourceMode
 import com.refit.app.data.source.MockEmgDataSource
+import com.refit.app.data.source.MockEmgProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -64,7 +65,7 @@ class SessionViewModel(
 
     private val exerciseName = "손목 폄 운동"
 
-    private val dataSource: EmgDataSource = MockEmgDataSource()
+    private val dataSource = MockEmgDataSource()
 
     private val repository = RehabSessionRepository(
         ReFitDatabase.getInstance(application).rehabSessionDao()
@@ -134,6 +135,7 @@ class SessionViewModel(
             var collectorJob: Job? = null
 
             try {
+                dataSource.setProfile(MockEmgProfile.REST)
                 dataSource.connect()
 
                 val collected = mutableListOf<Float>()
@@ -166,6 +168,8 @@ class SessionViewModel(
                     ?.average()
                     ?.toFloat()
                     ?: 0f
+
+                dataSource.setProfile(MockEmgProfile.LIGHT_CONTRACTION)
 
                 _uiState.value = _uiState.value.copy(
                     calibrationPhase = CalibrationPhase.CONTRACT,
@@ -296,6 +300,7 @@ class SessionViewModel(
 
         emgJob = viewModelScope.launch {
             try {
+                dataSource.setProfile(MockEmgProfile.EXERCISE)
                 dataSource.connect()
 
                 _uiState.value = _uiState.value.copy(
