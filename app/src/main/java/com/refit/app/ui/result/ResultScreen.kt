@@ -109,7 +109,11 @@ fun ResultScreen(
             )
 
             Text(
-                text = "운동 중 기록된 센서 요약입니다.",
+                text = if (result.signalSource == "MOCK") {
+                    "운동 중 생성된 데모 sEMG 신호의 요약입니다."
+                } else {
+                    "운동 중 센서에서 기록된 sEMG 신호의 요약입니다."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 4.dp)
@@ -151,7 +155,11 @@ fun ResultScreen(
                 )
 
                 Text(
-                    text = "운동 전 측정한 mock sEMG 기준값입니다.",
+                    text = if (result.signalSource == "MOCK") {
+                        "운동 전 데모 sEMG 신호에서 측정한 기준값입니다."
+                    } else {
+                        "운동 전 실제 센서 신호에서 측정한 세션 기준값입니다."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = ReFitSubtext,
                     modifier = Modifier.padding(top = 4.dp)
