@@ -114,7 +114,11 @@ fun LiveSessionScreen(
                         color = ReFitSubtext
                     )
                     Text(
-                        text = if (state.connected) "●  Mock 신호 수신 중" else "Mock 신호 종료",
+                        text = if (state.connected) {
+                            if (state.sourceMode.isMock) "●  데모 신호 수신 중" else "●  BLE 센서 신호 수신 중"
+                        } else {
+                            "신호 수신 종료"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (state.connected) ReFitSuccess else ReFitSubtext,
                         modifier = Modifier.padding(top = 2.dp)
@@ -149,7 +153,11 @@ fun LiveSessionScreen(
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Text(
-                    text = "Mock sEMG 기록 중 · 신호값은 데모 데이터입니다.",
+                    text = if (state.sourceMode.isMock) {
+                        "데모 sEMG 기록 중 · 신호값은 생성된 테스트 데이터입니다."
+                    } else {
+                        "sEMG 센서 기록 중"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = ReFitPrimary
@@ -187,7 +195,7 @@ fun LiveSessionScreen(
                         .padding(14.dp)
                 ) {
                     Text(
-                        text = "Mock sEMG · 단위 미정",
+                        text = if (state.sourceMode.isMock) "데모 sEMG · 단위 미정" else "sEMG · 센서 원시값",
                         style = MaterialTheme.typography.bodySmall,
                         color = ReFitSubtext
                     )
