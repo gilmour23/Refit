@@ -76,7 +76,7 @@ fun ResultScreen(
 
             if (result.calibrationRest != null && result.calibrationActive != null) {
                 Text(
-                    text = "오늘 기준 측정값과 함께 저장됨",
+                    text = if (result.signalSource == "MOCK") "예시 기준값과 함께 저장됨" else "오늘 기준 측정값과 함께 저장됨",
                     style = MaterialTheme.typography.bodySmall,
                     color = ReFitSubtext,
                     modifier = Modifier.padding(top = 3.dp)
@@ -150,13 +150,13 @@ fun ResultScreen(
                 Spacer(modifier = Modifier.height(22.dp))
 
                 Text(
-                    text = "오늘 기준값",
+                    text = if (result.signalSource == "MOCK") "예시 기준값" else "오늘 기준값",
                     style = MaterialTheme.typography.titleLarge
                 )
 
                 Text(
                     text = if (result.signalSource == "MOCK") {
-                        "운동 전 예시 sEMG 신호에서 측정한 기준값입니다."
+                        "운동 전 생성된 예시 sEMG 신호에서 계산한 기준값입니다."
                     } else {
                         "운동 전 실제 센서 신호에서 측정한 세션 기준값입니다."
                     },
@@ -213,7 +213,7 @@ fun ResultScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             Text(
-                text = "RMS 등 센서값의 증감은 회복 정도를 직접 의미하지 않습니다.",
+                text = if (result.signalSource == "MOCK") "현재 RMS·MAV 등은 예시 데이터에서 계산된 시연용 값이며 회복 정도를 의미하지 않습니다." else "RMS 등 센서값의 증감은 회복 정도를 직접 의미하지 않습니다.",
                 style = MaterialTheme.typography.bodySmall,
                 color = ReFitSubtext
             )
