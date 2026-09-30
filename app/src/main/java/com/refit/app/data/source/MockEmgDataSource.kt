@@ -10,6 +10,8 @@ import kotlin.random.Random
 
 class MockEmgDataSource : EmgDataSource {
 
+    override val mode: EmgSourceMode = EmgSourceMode.MOCK
+
     private var connected = false
 
     override suspend fun connect() {
