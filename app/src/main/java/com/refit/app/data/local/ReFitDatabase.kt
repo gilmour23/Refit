@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [RehabSessionEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class ReFitDatabase : RoomDatabase() {
@@ -34,6 +34,14 @@ abstract class ReFitDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE rehab_sessions ADD COLUMN signalSource TEXT NOT NULL DEFAULT 'MOCK'"
+                )
+            }
+        }
+
         fun getInstance(context: Context): ReFitDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -41,7 +49,7 @@ abstract class ReFitDatabase : RoomDatabase() {
                     ReFitDatabase::class.java,
                     "refit.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { database ->
                         INSTANCE = database
