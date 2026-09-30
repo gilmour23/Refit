@@ -147,7 +147,7 @@ fun CalibrationScreen(
 
         Text(
             text = if (state.sourceMode.isMock) {
-                "현재 MVP의 기준값은 데모 sEMG 신호에서 계산되며 임상적 정상 범위를 판정하지 않습니다."
+                "현재 MVP의 기준값은 예시 sEMG 신호에서 계산되며 임상적 정상 범위를 판정하지 않습니다."
             } else {
                 "기준값은 이번 세션 내 비교를 위한 값이며 임상적 정상 범위를 판정하지 않습니다."
             },
