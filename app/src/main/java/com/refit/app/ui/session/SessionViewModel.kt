@@ -357,6 +357,7 @@ class SessionViewModel(
         val orthosisProfile = _uiState.value.orthosisProfile
         val restBaseline = _uiState.value.calibrationRest
         val activeBaseline = _uiState.value.calibrationActive
+        val signalSource = _uiState.value.sourceMode.name
 
         val countSnapshot = aggregateCount
         val rmsSnapshot =
@@ -373,7 +374,8 @@ class SessionViewModel(
             maxActivation = maxSnapshot,
             orthosisProfile = orthosisProfile,
             calibrationRest = restBaseline,
-            calibrationActive = activeBaseline
+            calibrationActive = activeBaseline,
+            signalSource = signalSource
         )
 
         emgJob?.cancel()
@@ -393,7 +395,7 @@ class SessionViewModel(
 
             try {
                 previousRms = repository
-                    .getLatestForExercise(exerciseName)
+                    .getLatestForExerciseAndSource(exerciseName, signalSource)
                     ?.rms
 
                 val sessionId = repository.insert(
@@ -407,7 +409,8 @@ class SessionViewModel(
                         maxActivation = baseResult.maxActivation,
                         orthosisProfile = orthosisProfile,
                         calibrationRest = restBaseline,
-                        calibrationActive = activeBaseline
+                        calibrationActive = activeBaseline,
+                        signalSource = signalSource
                     )
                 )
 
