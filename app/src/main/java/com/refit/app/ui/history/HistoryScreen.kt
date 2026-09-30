@@ -358,4 +358,4 @@ private fun formatDuration(totalSeconds: Long): String {
 }
 
 private fun signalSourceLabel(signalSource: String): String =
-    if (signalSource == "MOCK") "데모 신호" else "BLE 센서"
+    if (signalSource == "MOCK") "예시 데이터" else "BLE 센서"
