@@ -43,6 +43,7 @@ import com.refit.app.ui.theme.ReFitSuccess
 @Composable
 fun SensorSetupScreen(
     orthosisProfile: String,
+    sourceMode: com.refit.app.data.source.EmgSourceMode,
     onBack: () -> Unit,
     onContinue: () -> Unit
 ) {
@@ -158,12 +159,16 @@ fun SensorSetupScreen(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "데모 모드",
+                    text = if (sourceMode.isMock) "데모 모드" else "BLE 센서 모드",
                     style = MaterialTheme.typography.bodySmall,
                     color = ReFitPrimaryDark
                 )
                 Text(
-                    text = "현재 빌드는 실제 BLE 센서 대신 mock sEMG 신호를 사용합니다.",
+                    text = if (sourceMode.isMock) {
+                        "현재 빌드는 실제 BLE 센서 대신 생성된 데모 sEMG 신호를 사용합니다."
+                    } else {
+                        "이번 세션은 실제 BLE sEMG 센서 신호를 사용합니다."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = ReFitSubtext,
                     modifier = Modifier.padding(top = 4.dp)
