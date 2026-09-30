@@ -43,7 +43,7 @@ data class SessionUiState(
     val connected: Boolean = false,
     val running: Boolean = false,
     val samples: List<Float> = emptyList(),
-    val currentActivation: Float = 0f,
+    val currentSignalValue: Float = 0f,
     val elapsedSeconds: Long = 0L,
     val result: RehabSessionResult? = null,
     val history: List<RehabSessionEntity> = emptyList(),
@@ -143,7 +143,7 @@ class SessionViewModel(
                         collected += abs(sample.value)
                         _uiState.value = _uiState.value.copy(
                             connected = true,
-                            currentActivation = sample.value
+                            currentSignalValue = sample.value
                         )
                     }
                 }
@@ -254,7 +254,7 @@ class SessionViewModel(
             connected = false,
             running = false,
             samples = emptyList(),
-            currentActivation = 0f,
+            currentSignalValue = 0f,
             elapsedSeconds = 0L,
             result = null,
             isSaving = false,
@@ -303,7 +303,7 @@ class SessionViewModel(
                     connected = true,
                     running = true,
                     samples = emptyList(),
-                    currentActivation = 0f,
+                    currentSignalValue = 0f,
                     elapsedSeconds = 0L,
                     result = null,
                     isSaving = false,
@@ -329,7 +329,7 @@ class SessionViewModel(
 
                     _uiState.value = _uiState.value.copy(
                         samples = visibleSamples,
-                        currentActivation = sample.value
+                        currentSignalValue = sample.value
                     )
                 }
             } catch (e: CancellationException) {
@@ -342,7 +342,7 @@ class SessionViewModel(
                     connected = false,
                     running = false,
                     samples = emptyList(),
-                    currentActivation = 0f,
+                    currentSignalValue = 0f,
                     errorMessage = "sEMG 신호를 시작하지 못했습니다. 다시 시도해주세요."
                 )
             }
