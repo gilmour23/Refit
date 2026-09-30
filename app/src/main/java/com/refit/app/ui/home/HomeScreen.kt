@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.refit.app.data.local.RehabSessionEntity
+import com.refit.app.data.source.EmgSourceMode
 import com.refit.app.ui.theme.ReFitBorder
 import com.refit.app.ui.theme.ReFitButtonShape
 import com.refit.app.ui.theme.ReFitPrimary
@@ -45,6 +46,7 @@ import java.time.temporal.TemporalAdjusters
 @Composable
 fun HomeScreen(
     history: List<RehabSessionEntity>,
+    sourceMode: EmgSourceMode,
     onStartRehab: () -> Unit,
     onOpenHistory: () -> Unit
 ) {
@@ -135,7 +137,7 @@ fun HomeScreen(
                             .background(ReFitSurface, CircleShape)
                     )
                     Text(
-                        text = "sEMG 센서 준비됨",
+                        text = if (sourceMode.isMock) "데모 sEMG 모드" else "BLE sEMG 센서 사용",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ReFitSurface,
                         modifier = Modifier.padding(start = 8.dp)
@@ -183,7 +185,7 @@ fun HomeScreen(
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = "재활 세션에 연결됨",
+                    text = "현재 재활 프로그램 보조기",
                     style = MaterialTheme.typography.bodySmall,
                     color = ReFitSubtext,
                     modifier = Modifier.padding(top = 3.dp)
