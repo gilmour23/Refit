@@ -16,5 +16,6 @@ data class RehabSessionEntity(
     val maxActivation: Float,
     val orthosisProfile: String = "맞춤 손목 보조기",
     val calibrationRest: Float? = null,
-    val calibrationActive: Float? = null
+    val calibrationActive: Float? = null,
+    val signalSource: String = "MOCK"
 )
