@@ -110,7 +110,7 @@ fun ResultScreen(
 
             Text(
                 text = if (result.signalSource == "MOCK") {
-                    "운동 중 생성된 데모 sEMG 신호의 요약입니다."
+                    "운동 중 생성된 예시 sEMG 신호의 요약입니다."
                 } else {
                     "운동 중 센서에서 기록된 sEMG 신호의 요약입니다."
                 },
@@ -156,7 +156,7 @@ fun ResultScreen(
 
                 Text(
                     text = if (result.signalSource == "MOCK") {
-                        "운동 전 데모 sEMG 신호에서 측정한 기준값입니다."
+                        "운동 전 예시 sEMG 신호에서 측정한 기준값입니다."
                     } else {
                         "운동 전 실제 센서 신호에서 측정한 세션 기준값입니다."
                     },
