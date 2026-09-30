@@ -53,12 +53,12 @@ fun CalibrationScreen(
         Spacer(modifier = Modifier.height(28.dp))
 
         Text(
-            text = "오늘의 기준값을\n짧게 맞춥니다.",
+            text = "예시 기준값을\n먼저 생성합니다.",
             style = MaterialTheme.typography.headlineMedium
         )
 
         Text(
-            text = "운동 전 짧은 기준 측정을 통해 이번 세션의 sEMG 신호를 같은 조건에서 기록합니다.",
+            text = "현재 데모에서는 실제 사용자의 근전도를 측정하지 않고, 휴식·가벼운 수축 예시 데이터를 순서대로 생성합니다.",
             style = MaterialTheme.typography.bodyLarge,
             color = ReFitSubtext,
             modifier = Modifier.padding(top = 8.dp)
@@ -123,7 +123,7 @@ fun CalibrationScreen(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "✓ 기준 설정 완료",
+                    text = "✓ 예시 기준값 생성 완료",
                     style = MaterialTheme.typography.bodyMedium,
                     color = ReFitSuccess,
                     fontWeight = FontWeight.SemiBold
@@ -147,7 +147,7 @@ fun CalibrationScreen(
 
         Text(
             text = if (state.sourceMode.isMock) {
-                "현재 MVP의 기준값은 예시 sEMG 신호에서 계산되며 임상적 정상 범위를 판정하지 않습니다."
+                "이 기준값은 실제 사용자 측정값이 아닌 시연용 예시 데이터이며 임상적 해석에 사용할 수 없습니다."
             } else {
                 "기준값은 이번 세션 내 비교를 위한 값이며 임상적 정상 범위를 판정하지 않습니다."
             },
@@ -179,7 +179,7 @@ fun CalibrationScreen(
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
-                        text = "기준 측정 시작",
+                        text = "예시 기준값 생성",
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -222,19 +222,19 @@ private fun phaseEyebrow(phase: CalibrationPhase): String {
 
 private fun phaseTitle(phase: CalibrationPhase): String {
     return when (phase) {
-        CalibrationPhase.IDLE -> "약 6초면 끝나요."
-        CalibrationPhase.REST -> "힘을 빼고 편안하게"
-        CalibrationPhase.CONTRACT -> "가볍게 힘을 주세요"
-        CalibrationPhase.COMPLETE -> "이제 운동을 시작할 수 있어요."
+        CalibrationPhase.IDLE -> "약 6초 동안 예시 데이터를 생성합니다."
+        CalibrationPhase.REST -> "휴식 상태 예시 데이터"
+        CalibrationPhase.CONTRACT -> "가벼운 수축 예시 데이터"
+        CalibrationPhase.COMPLETE -> "예시 기준값이 준비됐습니다."
     }
 }
 
 private fun phaseDescription(phase: CalibrationPhase): String {
     return when (phase) {
-        CalibrationPhase.IDLE -> "3초 휴식 상태와 3초 가벼운 수축 상태를 순서대로 측정합니다."
-        CalibrationPhase.REST -> "손목과 손가락에 힘을 빼고 그대로 유지하세요."
-        CalibrationPhase.CONTRACT -> "통증이 없는 범위에서 손목에 가볍게 힘을 주세요."
-        CalibrationPhase.COMPLETE -> "이번 세션의 센서 기록에 이 기준값을 함께 저장합니다."
+        CalibrationPhase.IDLE -> "휴식 상태 3초와 가벼운 수축 상태 3초의 예시 신호를 순서대로 생성합니다."
+        CalibrationPhase.REST -> "낮은 진폭의 휴식 상태 예시 신호를 생성하고 있습니다."
+        CalibrationPhase.CONTRACT -> "휴식보다 높은 가벼운 수축 상태 예시 신호를 생성하고 있습니다."
+        CalibrationPhase.COMPLETE -> "이 값은 데모 세션의 계산과 기록에 함께 사용됩니다."
     }
 }
 
