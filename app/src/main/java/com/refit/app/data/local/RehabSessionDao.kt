@@ -17,8 +17,12 @@ interface RehabSessionDao {
     @Query("""
         SELECT * FROM rehab_sessions
         WHERE exerciseName = :exerciseName
+          AND signalSource = :signalSource
         ORDER BY createdAt DESC
         LIMIT 1
     """)
-    suspend fun getLatestForExercise(exerciseName: String): RehabSessionEntity?
+    suspend fun getLatestForExerciseAndSource(
+        exerciseName: String,
+        signalSource: String
+    ): RehabSessionEntity?
 }
