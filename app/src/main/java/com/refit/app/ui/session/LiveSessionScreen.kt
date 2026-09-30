@@ -134,7 +134,7 @@ fun LiveSessionScreen(
                         color = ReFitSubtext
                     )
                     Text(
-                        text = "%.3f".format(state.currentActivation),
+                        text = "%.3f".format(state.currentSignalValue),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(top = 2.dp)
                     )
