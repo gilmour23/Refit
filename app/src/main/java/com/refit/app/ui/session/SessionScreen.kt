@@ -17,6 +17,7 @@ fun SessionScreen(
         ReFitScreen.HOME -> {
             HomeScreen(
                 history = state.history,
+                sourceMode = state.sourceMode,
                 onStartRehab = viewModel::openSensorSetup,
                 onOpenHistory = viewModel::openHistory
             )
@@ -25,6 +26,7 @@ fun SessionScreen(
         ReFitScreen.SENSOR_SETUP -> {
             SensorSetupScreen(
                 orthosisProfile = state.orthosisProfile,
+                sourceMode = state.sourceMode,
                 onBack = viewModel::backToHome,
                 onContinue = viewModel::confirmSensorSetup
             )
