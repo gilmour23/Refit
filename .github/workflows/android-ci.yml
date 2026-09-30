@@ -1,10 +1,12 @@
 name: Android CI
 
-# Temporary mode:
-# The repository currently cannot start GitHub-hosted runners reliably.
-# Keep CI available for manual verification, while local Gradle Wrapper builds
-# are the canonical build path until repository ownership/Actions is stabilized.
 on:
+  push:
+    branches:
+      - feature/v0.4-product-ui
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -31,12 +33,54 @@ jobs:
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" "platforms;android-35" "build-tools;34.0.0"
 
-      - name: Set up Gradle cache
-        uses: gradle/actions/setup-gradle@v6
+      - name: Assemble debug
+        run: ./gradlew --no-daemon :app:assembleDebug
 
-      - name: Build and verify hardened internal APK
+      - name: Assemble hardened internal
+        run: ./gradlew --no-daemon :app:assembleInternal
+
+      - name: Verify internal APK hardening
         shell: bash
-        run: ./scripts/build_internal.sh
+        run: |
+          APK="app/build/outputs/apk/internal/app-internal.apk"
+          AAPT="/usr/local/lib/android/sdk/build-tools/34.0.0/aapt"
+
+          test -f "$APK"
+          "$AAPT" dump badging "$APK" > /tmp/refit-badging.txt
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > /tmp/refit-manifest.txt
+          "$AAPT" dump permissions "$APK" > /tmp/refit-permissions.txt
+
+          if grep -q "application-debuggable" /tmp/refit-badging.txt; then
+            echo "Internal APK is debuggable"
+            exit 1
+          fi
+
+          if grep -q "androidx.compose.ui.tooling.PreviewActivity" /tmp/refit-manifest.txt; then
+            echo "Compose PreviewActivity leaked into internal APK"
+            exit 1
+          fi
+
+          if ! grep -Eq "android:allowBackup.*0x0" /tmp/refit-manifest.txt; then
+            echo "allowBackup=false was not found"
+            exit 1
+          fi
+
+          if ! grep -Eq "android:usesCleartextTraffic.*0x0" /tmp/refit-manifest.txt; then
+            echo "usesCleartextTraffic=false was not found"
+            exit 1
+          fi
+
+          if grep -q "android.permission.INTERNET" /tmp/refit-permissions.txt; then
+            echo "Unexpected INTERNET permission"
+            exit 1
+          fi
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: refit-v0.4-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
       - name: Upload hardened internal APK
         uses: actions/upload-artifact@v4
