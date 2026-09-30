@@ -8,7 +8,7 @@ enum class EmgSourceMode(
     val isMock: Boolean
 ) {
     MOCK(
-        displayName = "데모 신호",
+        displayName = "예시 데이터",
         isMock = true
     ),
     BLE(
