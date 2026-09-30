@@ -68,12 +68,12 @@ fun SensorSetupScreen(
             Spacer(modifier = Modifier.height(26.dp))
 
             Text(
-                text = "보조기와 센서를\n먼저 확인할게요.",
+                text = "보조기와 센서 위치를\n먼저 확인할게요.",
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Text(
-                text = "운동 전에 착용 상태와 sEMG 센서 위치를 맞춰두면 기록을 더 일관되게 남길 수 있습니다.",
+                text = "보조기 착용 상태와 sEMG 센서 부착 위치 예시를 확인한 뒤 데모를 진행합니다."
                 style = MaterialTheme.typography.bodyLarge,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 8.dp)
@@ -124,14 +124,14 @@ fun SensorSetupScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "02  sEMG 센서",
+                text = "02  sEMG 센서 위치 예시",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitPrimary,
                 fontWeight = FontWeight.SemiBold
             )
 
             Text(
-                text = "전완부 센서 위치",
+                text = "전완부 부착 위치 예시",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(top = 6.dp)
             )
@@ -165,7 +165,7 @@ fun SensorSetupScreen(
                 )
                 Text(
                     text = if (sourceMode.isMock) {
-                        "현재 빌드는 실제 BLE 센서 대신 생성된 예시 sEMG 신호를 사용합니다."
+                        "현재 빌드는 실제 센서와 연결되지 않습니다. 아래 단계에서는 생성된 예시 sEMG 데이터를 사용합니다."
                     } else {
                         "이번 세션은 실제 BLE sEMG 센서 신호를 사용합니다."
                     },
@@ -189,7 +189,7 @@ fun SensorSetupScreen(
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
             Text(
-                text = "착용 확인 완료",
+                text = "확인 완료"
                 fontWeight = FontWeight.SemiBold
             )
         }
