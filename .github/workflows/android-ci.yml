@@ -1,9 +1,6 @@
 name: Android CI
 
 on:
-  push:
-    branches:
-      - feature/v0.4-product-ui
   pull_request:
     branches:
       - main
