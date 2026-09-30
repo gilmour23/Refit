@@ -160,9 +160,14 @@ private fun SummaryValue(
 private fun TrendSection(
     sessions: List<RehabSessionEntity>
 ) {
-    val latestExercise = sessions.firstOrNull()?.exerciseName
+    val latestSession = sessions.firstOrNull()
+    val latestExercise = latestSession?.exerciseName
+    val latestSource = latestSession?.signalSource
     val recent = sessions
-        .filter { latestExercise == null || it.exerciseName == latestExercise }
+        .filter {
+            (latestExercise == null || it.exerciseName == latestExercise) &&
+                (latestSource == null || it.signalSource == latestSource)
+        }
         .take(7)
         .reversed()
 
@@ -318,7 +323,7 @@ private fun SessionHistoryRow(
         )
 
         Text(
-            text = "RMS " + "%.4f".format(session.rms),
+            text = signalSourceLabel(session.signalSource) + " · RMS " + "%.4f".format(session.rms),
             style = MaterialTheme.typography.bodyMedium,
             color = ReFitSubtext,
             fontWeight = FontWeight.Medium,
@@ -351,3 +356,6 @@ private fun formatDuration(totalSeconds: Long): String {
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
 }
+
+private fun signalSourceLabel(signalSource: String): String =
+    if (signalSource == "MOCK") "데모 신호" else "BLE 센서"
