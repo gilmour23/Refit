@@ -10,14 +10,18 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.refit.app.ui.session.SessionScreen
 import com.refit.app.ui.session.SessionViewModel
+import com.refit.app.ui.theme.ReFitTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            ReFitTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     val sessionViewModel: SessionViewModel = viewModel()
                     SessionScreen(viewModel = sessionViewModel)
                 }
