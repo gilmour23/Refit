@@ -1,0 +1,5 @@
+# Copy these values into local.properties.
+# Do not commit real credentials.
+
+SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME
