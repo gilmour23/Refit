@@ -23,4 +23,15 @@ object EmgSignalProcessor {
             .average()
             .toFloat()
     }
+
+    fun peakMagnitude(samples: List<Float>): Float {
+        return samples.maxOfOrNull { abs(it) } ?: 0f
+    }
+
+    fun rollingRms(samples: List<Float>, windowSize: Int): Float {
+        require(windowSize > 0) { "windowSize must be greater than 0" }
+        if (samples.isEmpty()) return 0f
+
+        return rms(samples.takeLast(windowSize))
+    }
 }
