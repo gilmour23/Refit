@@ -176,3 +176,16 @@ raw EMG 장기 저장이 필요해지면 DB row 단위가 아니라 파일(CSV/b
 - Debug APK 빌드 성공
 - 상세 검증: [Phase 2 identity verification](docs/verification/2026-10-03-phase2-identity.md)
 - 실제 서버 로그인·기기 검증은 Supabase 프로젝트 설정 후 진행해야 합니다.
+
+## 3차 검증 (2026-10-03)
+
+Room 저장 직후 운동 결과를 표시하고, 요약 기록을 Supabase에 업로드합니다. 실패·응답 유실·앱 종료 후에도 로컬 기록을 유지하며 같은 clientLocalId로 재시도합니다. 현재 로그인 사용자만 업로드할 수 있습니다.
+
+- 앱 재실행·화면 복귀·인증 복원·운동 종료 시 재시도
+- 재활 기록 화면에서 미동기화 기록 직접 재시도
+- 동시 요청·계정 전환·취소·중단된 SYNCING 상태 처리
+- 단위·통합 테스트 33개 통과, Debug APK 빌드 성공
+- PostgreSQL CI에서 RLS·중복 방지 SQL 검증
+- 상세 검증 및 실제 서버 연결 후 체크: [Phase 3 sync verification](docs/verification/2026-10-03-phase3-sync.md)
+
+앱을 종료한 동안에는 동기화하지 않습니다. 다른 기기의 클라우드 기록을 내려받는 기능은 이번 범위에 포함하지 않습니다.

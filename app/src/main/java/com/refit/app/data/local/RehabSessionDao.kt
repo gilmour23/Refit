@@ -26,13 +26,13 @@ interface RehabSessionDao {
     )
     suspend fun getLatest(userId: String): RehabSessionEntity?
 
-    @Query("SELECT * FROM rehab_sessions WHERE id = :localId LIMIT 1")
-    suspend fun getById(localId: Long): RehabSessionEntity?
+    @Query("SELECT * FROM rehab_sessions WHERE id = :localId AND userId = :userId LIMIT 1")
+    suspend fun getById(localId: Long, userId: String): RehabSessionEntity?
 
     @Query(
         "SELECT * FROM rehab_sessions " +
             "WHERE userId = :userId " +
-            "AND syncStatus IN ('LOCAL_ONLY', 'FAILED') " +
+            "AND syncStatus IN ('LOCAL_ONLY', 'FAILED', 'SYNCING') " +
             "ORDER BY createdAt ASC"
     )
     suspend fun getPendingSync(userId: String): List<RehabSessionEntity>
@@ -40,14 +40,14 @@ interface RehabSessionDao {
     @Query(
         "UPDATE rehab_sessions SET " +
             "syncStatus = :status, " +
-            "remoteId = :remoteId, " +
-            "updatedAt = :updatedAt " +
-            "WHERE id = :localId"
+            "remoteId = :remoteId " +
+            "WHERE id = :localId AND userId = :userId"
     )
     suspend fun updateSyncState(
         localId: Long,
         status: SyncStatus,
         remoteId: String?,
-        updatedAt: Long
+        userId: String
     )
 }
+

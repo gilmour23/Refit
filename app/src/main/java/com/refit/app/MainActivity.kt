@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
@@ -120,6 +122,10 @@ private fun AuthenticatedApp(
     )
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
 
+    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+        sessionViewModel.retrySync()
+    }
+
     when (page) {
         AppPage.HOME -> {
             HomeScreen(
@@ -147,6 +153,9 @@ private fun AuthenticatedApp(
         AppPage.HISTORY -> {
             HistoryScreen(
                 sessions = sessionState.history,
+                isSyncing = sessionState.isSyncing,
+                syncMessage = sessionState.syncMessage,
+                onRetrySync = sessionViewModel::retrySync,
                 onBack = {
                     pageName = AppPage.HOME.name
                 }

@@ -155,12 +155,12 @@
 - Produces: idempotent summarized cloud session rows.
 - Produces: local `SYNCED` or `FAILED` state transition.
 
-- [ ] Define `profiles` and `rehab_sessions` SQL with RLS policies scoped to `auth.uid()`.
-- [ ] Add a unique client-side local identifier for idempotent retry.
-- [ ] Implement remote insert/upsert of summary metrics only.
-- [ ] Implement coordinator: local save -> upload attempt -> update sync state.
-- [ ] Treat network/cloud errors as retryable without deleting local data.
-- [ ] Add repository tests for successful and failed sync transitions.
+- [x] Define `profiles` and `rehab_sessions` SQL with RLS policies scoped to `auth.uid()`.
+- [x] Add a unique client-side local identifier for idempotent retry.
+- [x] Implement remote insert/upsert of summary metrics only.
+- [x] Implement coordinator: local save -> upload attempt -> update sync state.
+- [x] Treat network/cloud errors as retryable without deleting local data.
+- [x] Add repository tests for successful and failed sync transitions.
 
 ### Task 7: Product navigation and progress surface
 
@@ -183,3 +183,5 @@
 ## Delivery checkpoints
 
 2026-10-03, second delivery: Task 2/3 automated verification completed (17 tests, debug APK build). Supabase project provisioning and live server/device acceptance remain pending. See `docs/verification/2026-10-03-phase2-identity.md`. Later tasks retain their existing implementation and require their own agreed validation.
+
+2026-10-03, third delivery: Task 6 upload/retry and history retry controls verified with 33 tests and debug APK. PostgreSQL RLS/idempotency regression added to CI. Hosted project/device acceptance remains pending.

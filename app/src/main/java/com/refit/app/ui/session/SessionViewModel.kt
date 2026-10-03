@@ -13,6 +13,10 @@ import com.refit.app.data.source.EmgDataSource
 import com.refit.app.data.source.MockEmgDataSource
 import com.refit.app.signal.EmgSignalProcessor
 import com.refit.app.signal.RealtimeEmgWindow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +36,8 @@ data class SessionUiState(
     val history: List<RehabSessionEntity> = emptyList(),
     val showHistory: Boolean = false,
     val isSaving: Boolean = false,
+    val isSyncing: Boolean = false,
+    val syncMessage: String? = null,
     val message: String? = null
 )
 
@@ -39,14 +45,12 @@ class SessionViewModel(
     application: Application,
     private val userId: String,
     private val dataSource: EmgDataSource = MockEmgDataSource(),
-    realtimeWindowSize: Int = 50
-) : AndroidViewModel(application) {
-
-    private val repository = RehabSessionRepository(
+    realtimeWindowSize: Int = 50,
+    private val repository: RehabSessionRepository = RehabSessionRepository(
         ReFitDatabase.getInstance(application).rehabSessionDao()
-    )
-
-    private val syncCoordinator = SessionSyncCoordinator(repository)
+    ),
+    private val syncCoordinator: SessionSyncCoordinator = SessionSyncCoordinator(repository)
+) : AndroidViewModel(application) {
     private val realtimeWindow = RealtimeEmgWindow(realtimeWindowSize)
 
     private val _uiState = MutableStateFlow(SessionUiState())
@@ -54,6 +58,8 @@ class SessionViewModel(
 
     private var emgJob: Job? = null
     private var timerJob: Job? = null
+    private var syncJob: Job? = null
+    private var syncRequested = false
 
     private val sessionSamples = mutableListOf<Float>()
 
@@ -66,8 +72,43 @@ class SessionViewModel(
             }
         }
 
+        retrySync()
         viewModelScope.launch {
-            syncCoordinator.syncPending(userId)
+            syncCoordinator.syncOwner.collect { readyOwner ->
+                if (readyOwner == userId) retrySync()
+            }
+        }
+    }
+
+    fun retrySync() {
+        if (syncJob?.isActive == true) {
+            syncRequested = true
+            return
+        }
+        _uiState.update { it.copy(isSyncing = true, syncMessage = null) }
+        syncJob = viewModelScope.launch {
+            try {
+                do {
+                    syncRequested = false
+                    syncCoordinator.syncPending(userId)
+                    val remaining = repository.getPendingSync(userId).size
+                    _uiState.update { it.copy(syncMessage = if (remaining == 0) {
+                        "모든 기록이 동기화되었습니다."
+                    } else {
+                        "미동기화 기록 ${remaining}개가 이 기기에 저장되어 있습니다. 연결을 확인한 후 다시 시도해 주세요."
+                    }) }
+                    // This check follows every suspension, including the final
+                    // Room status read, so no active-worker trigger is dropped.
+                } while (syncRequested)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _uiState.update { it.copy(syncMessage = "동기화하지 못했습니다. 저장된 기록은 이 기기에 유지됩니다.") }
+            } finally {
+                if (currentCoroutineContext().isActive) {
+                    _uiState.update { it.copy(isSyncing = false) }
+                }
+            }
         }
     }
 
@@ -187,9 +228,7 @@ class SessionViewModel(
                 message = null
             )
 
-            launch {
-                syncCoordinator.syncSession(sessionId)
-            }
+            retrySync()
         }
     }
 
@@ -211,7 +250,9 @@ class SessionViewModel(
         sessionSamples.clear()
         realtimeWindow.clear()
         _uiState.value = SessionUiState(
-            history = _uiState.value.history
+            history = _uiState.value.history,
+            isSyncing = _uiState.value.isSyncing,
+            syncMessage = _uiState.value.syncMessage
         )
     }
 

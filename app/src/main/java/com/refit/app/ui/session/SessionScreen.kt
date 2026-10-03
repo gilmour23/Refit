@@ -30,7 +30,10 @@ fun SessionScreen(
     if (state.showHistory) {
         HistoryScreen(
             sessions = state.history,
-            onBack = viewModel::closeHistory
+            onBack = viewModel::closeHistory,
+            isSyncing = state.isSyncing,
+            syncMessage = state.syncMessage,
+            onRetrySync = viewModel::retrySync
         )
         return
     }
@@ -149,3 +152,4 @@ private fun formatTime(totalSeconds: Long): String {
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
 }
+

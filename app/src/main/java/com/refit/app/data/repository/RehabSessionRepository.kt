@@ -14,8 +14,8 @@ class RehabSessionRepository(
     suspend fun getLatest(userId: String): RehabSessionEntity? =
         dao.getLatest(userId)
 
-    suspend fun getById(localId: Long): RehabSessionEntity? =
-        dao.getById(localId)
+    suspend fun getById(localId: Long, userId: String): RehabSessionEntity? =
+        dao.getById(localId, userId)
 
     suspend fun getPendingSync(userId: String): List<RehabSessionEntity> =
         dao.getPendingSync(userId)
@@ -25,6 +25,7 @@ class RehabSessionRepository(
 
     suspend fun updateSyncState(
         localId: Long,
+        userId: String,
         status: SyncStatus,
         remoteId: String? = null
     ) {
@@ -32,7 +33,8 @@ class RehabSessionRepository(
             localId = localId,
             status = status,
             remoteId = remoteId,
-            updatedAt = System.currentTimeMillis()
+            userId = userId
         )
     }
 }
+

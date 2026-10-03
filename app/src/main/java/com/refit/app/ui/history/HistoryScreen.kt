@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.refit.app.data.local.RehabSessionEntity
+import com.refit.app.data.model.SyncStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -24,7 +25,10 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun HistoryScreen(
     sessions: List<RehabSessionEntity>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    isSyncing: Boolean,
+    syncMessage: String?,
+    onRetrySync: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -37,6 +41,15 @@ fun HistoryScreen(
         )
 
         Spacer(modifier = Modifier.padding(top = 12.dp))
+
+        OutlinedButton(
+            onClick = onRetrySync,
+            enabled = !isSyncing && sessions.any { it.syncStatus != SyncStatus.SYNCED },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (isSyncing) "동기화 중…" else "미동기화 기록 다시 시도")
+        }
+        syncMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 
         if (sessions.isEmpty()) {
             Text(
@@ -117,10 +130,11 @@ private fun SessionHistoryCard(
             }
 
             Text(
-                text = when (session.syncStatus.name) {
-                    "SYNCED" -> "클라우드 동기화 완료"
-                    "FAILED" -> "동기화 재시도 필요"
-                    else -> "로컬 저장됨"
+                text = when (session.syncStatus) {
+                    SyncStatus.SYNCED -> "클라우드 동기화 완료"
+                    SyncStatus.FAILED -> "동기화 재시도 필요"
+                    SyncStatus.SYNCING -> "클라우드 동기화 중…"
+                    SyncStatus.LOCAL_ONLY -> "로컬 저장됨"
                 },
                 style = MaterialTheme.typography.bodySmall
             )
@@ -158,3 +172,4 @@ private fun formatDuration(totalSeconds: Long): String {
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
 }
+
