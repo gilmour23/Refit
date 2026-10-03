@@ -41,7 +41,7 @@ fun LiveSessionScreen(
     state: SessionUiState,
     onStop: () -> Unit
 ) {
-    var showSignal by remember { mutableStateOf(false) }
+    var showSignal by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
@@ -67,7 +67,7 @@ fun LiveSessionScreen(
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Text(
-                        text = "재활 세션",
+                        text = "데모 세션",
                         style = MaterialTheme.typography.bodyMedium,
                         color = ReFitSubtext,
                         modifier = Modifier.padding(top = 2.dp)
@@ -236,7 +236,7 @@ fun LiveSessionScreen(
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
             ) {
                 Text(
-                    text = "세션 끝내기",
+                    text = "데모 종료 · 결과 보기",
                     fontWeight = FontWeight.SemiBold
                 )
             }
