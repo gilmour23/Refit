@@ -50,7 +50,15 @@ fun CalibrationScreen(
                 state.calibrationPhase == CalibrationPhase.COMPLETE
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "준비 2 / 3",
+            style = MaterialTheme.typography.bodySmall,
+            color = ReFitPrimary
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "예시 기준값을\n먼저 생성합니다.",
