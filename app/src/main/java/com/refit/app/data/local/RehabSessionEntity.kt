@@ -1,17 +1,28 @@
 package com.refit.app.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.refit.app.data.model.SyncStatus
 
-@Entity(tableName = "rehab_sessions")
+@Entity(
+    tableName = "rehab_sessions",
+    indices = [Index(value = ["userId", "createdAt"])]
+)
 data class RehabSessionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
+    val remoteId: String? = null,
+    val userId: String,
     val createdAt: Long,
     val exerciseName: String,
     val durationSeconds: Long,
     val sampleCount: Int,
     val rms: Float,
     val mav: Float,
-    val maxActivation: Float
+    @ColumnInfo(name = "maxActivation")
+    val peakActivation: Float,
+    val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    val updatedAt: Long = createdAt
 )
