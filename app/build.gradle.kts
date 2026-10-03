@@ -10,7 +10,7 @@ val localProperties = Properties().apply {
 fun localProperty(name: String): String =
     localProperties.getProperty(name, "")
         .replace("\\", "\\\\")
-        .replace(""", "\\"")
+        .replace("\"", "\\\"")
 
 plugins {
     id("com.android.application")
