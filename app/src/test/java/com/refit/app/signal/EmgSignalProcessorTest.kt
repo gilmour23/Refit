@@ -3,6 +3,7 @@ package com.refit.app.signal
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import kotlin.math.sqrt
 
 class EmgSignalProcessorTest {
 
@@ -25,8 +26,9 @@ class EmgSignalProcessorTest {
 
     @Test
     fun rollingRmsUsesOnlyMostRecentWindow() {
+        val expected = sqrt((9f + 16f) / 2f)
         assertEquals(
-            5f,
+            expected,
             EmgSignalProcessor.rollingRms(listOf(100f, 3f, 4f), windowSize = 2),
             0.0001f
         )
