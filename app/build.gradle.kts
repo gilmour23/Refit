@@ -1,8 +1,23 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun localProperty(name: String): String =
+    localProperties.getProperty(name, "")
+        .replace("\\", "\\\\")
+        .replace(""", "\\"")
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.kapt")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -13,12 +28,24 @@ android {
         applicationId = "com.refit.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
+
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${localProperty("SUPABASE_URL")}\""
+        )
+        buildConfigField(
+            "String",
+            "SUPABASE_PUBLISHABLE_KEY",
+            "\"${localProperty("SUPABASE_PUBLISHABLE_KEY")}\""
+        )
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -33,6 +60,7 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-process:2.10.0")
     implementation("androidx.activity:activity-compose:1.10.0")
 
     implementation("androidx.compose.ui:ui")
@@ -46,6 +74,12 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
+
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.8.0"))
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.ktor:ktor-client-android:3.5.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
     testImplementation("junit:junit:4.13.2")
 
