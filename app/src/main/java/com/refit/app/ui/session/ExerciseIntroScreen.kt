@@ -111,13 +111,13 @@ fun ExerciseIntroScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             Text(
-                text = "●  Mock sEMG 준비됨",
+                text = "●  예시 sEMG 데이터 준비됨",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSuccess
             )
 
             Text(
-                text = "현재 빌드는 mock sEMG 신호를 사용하며 운동 중 자동 기록됩니다.",
+                text = "현재 빌드는 실제 센서 대신 생성된 예시 sEMG 데이터를 사용하며 운동 중 자동 기록됩니다.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 5.dp)
@@ -146,7 +146,7 @@ fun ExerciseIntroScreen(
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
             Text(
-                text = "재활 시작",
+                text = "예시 데이터로 시작",
                 fontWeight = FontWeight.SemiBold
             )
         }
