@@ -53,7 +53,15 @@ fun ExerciseIntroScreen(
                 onClick = onBack
             )
 
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "준비 3 / 3",
+                style = MaterialTheme.typography.bodySmall,
+                color = ReFitPrimary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "손목 폄 운동",
