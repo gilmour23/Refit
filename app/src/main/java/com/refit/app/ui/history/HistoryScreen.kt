@@ -60,7 +60,7 @@ fun HistoryScreen(
             )
 
             Text(
-                text = "완료한 세션과 sEMG 측정 기록을 모아봅니다.",
+                text = "완료한 재활 세션의 sEMG 요약 기록을 모아봅니다.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 5.dp)
@@ -92,7 +92,7 @@ fun HistoryScreen(
             )
 
             Text(
-                text = "같은 운동에서 기록된 센서값을 세션별로 비교합니다.",
+                text = "같은 운동과 같은 데이터 소스의 RMS 기록만 비교합니다.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 4.dp)
@@ -332,7 +332,7 @@ private fun SessionHistoryRow(
 
         if (session.calibrationRest != null && session.calibrationActive != null) {
             Text(
-                text = "기준 측정 포함",
+                text = if (session.signalSource == "MOCK") "예시 기준값 포함" else "기준 측정 포함",
                 style = MaterialTheme.typography.bodySmall,
                 color = ReFitSubtext,
                 modifier = Modifier.padding(top = 2.dp)
