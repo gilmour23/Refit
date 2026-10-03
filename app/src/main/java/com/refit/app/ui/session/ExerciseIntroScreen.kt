@@ -1,6 +1,5 @@
 package com.refit.app.ui.session
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,7 +48,7 @@ fun ExerciseIntroScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             BackNavButton(
-                label = "오늘의 재활",
+                label = "예시 기준값",
                 onClick = onBack
             )
 
