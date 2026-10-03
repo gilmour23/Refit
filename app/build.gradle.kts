@@ -4,7 +4,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.kotlin.kapt")
+    id("com.google.devtools.ksp")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
@@ -81,7 +81,7 @@ dependencies {
     val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    kapt("androidx.room:room-compiler:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     implementation(platform("io.github.jan-tennert.supabase:bom:3.8.0"))
     implementation("io.github.jan-tennert.supabase:auth-kt")
