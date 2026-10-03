@@ -3,6 +3,9 @@ package com.refit.app.data.source
 import com.refit.app.data.model.EmgSample
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlin.math.abs
 import kotlin.math.sin
@@ -12,12 +15,20 @@ class MockEmgDataSource : EmgDataSource {
 
     private var connected = false
 
+    private val _connectionState =
+        MutableStateFlow<EmgConnectionState>(EmgConnectionState.Disconnected)
+    override val connectionState: StateFlow<EmgConnectionState> =
+        _connectionState.asStateFlow()
+
     override suspend fun connect() {
+        _connectionState.value = EmgConnectionState.Connecting("Mock sEMG")
         connected = true
+        _connectionState.value = EmgConnectionState.Connected("Mock sEMG")
     }
 
     override suspend fun disconnect() {
         connected = false
+        _connectionState.value = EmgConnectionState.Disconnected
     }
 
     override fun observeEmg(): Flow<EmgSample> = flow {
