@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,140 +41,142 @@ fun CalibrationScreen(
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp)
     ) {
-        Spacer(modifier = Modifier.height(18.dp))
-
-        BackNavButton(
-            label = "센서 확인",
-            onClick = onBack,
-            enabled = state.calibrationPhase == CalibrationPhase.IDLE ||
-                state.calibrationPhase == CalibrationPhase.COMPLETE
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            text = "준비 2 / 3",
-            style = MaterialTheme.typography.bodySmall,
-            color = ReFitPrimary
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "예시 기준값을\n먼저 생성합니다.",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Text(
-            text = "현재 데모에서는 실제 사용자의 근전도를 측정하지 않고, 휴식·가벼운 수축 예시 데이터를 순서대로 생성합니다.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = ReFitSubtext,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-
-        Spacer(modifier = Modifier.height(34.dp))
-
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = ReFitPrimarySoft,
-                    shape = RoundedCornerShape(22.dp)
-                )
-                .padding(20.dp)
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
         ) {
+            Spacer(modifier = Modifier.height(18.dp))
+
+            BackNavButton(
+                label = "센서 확인",
+                onClick = onBack,
+                enabled = state.calibrationPhase == CalibrationPhase.IDLE ||
+                    state.calibrationPhase == CalibrationPhase.COMPLETE
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             Text(
-                text = phaseEyebrow(state.calibrationPhase),
+                text = "준비 2 / 3",
                 style = MaterialTheme.typography.bodySmall,
-                color = ReFitPrimaryDark
+                color = ReFitPrimary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "예시 기준값을\n먼저 생성합니다.",
+                style = MaterialTheme.typography.headlineMedium
             )
 
             Text(
-                text = phaseTitle(state.calibrationPhase),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-
-            Text(
-                text = phaseDescription(state.calibrationPhase),
-                style = MaterialTheme.typography.bodyMedium,
+                text = "현재 데모에서는 실제 사용자의 근전도를 측정하지 않고, 휴식·가벼운 수축 예시 데이터를 순서대로 생성합니다.",
+                style = MaterialTheme.typography.bodyLarge,
                 color = ReFitSubtext,
-                modifier = Modifier.padding(top = 6.dp)
+                modifier = Modifier.padding(top = 8.dp)
             )
 
-            if (
-                state.calibrationPhase == CalibrationPhase.REST ||
-                state.calibrationPhase == CalibrationPhase.CONTRACT
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = ReFitPrimarySoft,
+                        shape = RoundedCornerShape(22.dp)
+                    )
+                    .padding(20.dp)
             ) {
-                Spacer(modifier = Modifier.height(22.dp))
-
-                LinearProgressIndicator(
-                    progress = { state.calibrationProgress.coerceIn(0f, 1f) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = ReFitPrimary,
-                    trackColor = ReFitPrimary.copy(alpha = 0.14f)
-                )
-
                 Text(
-                    text = ((state.calibrationProgress * 3f)
-                        .coerceIn(0f, 3f))
-                        .let { "%.1f / 3.0초".format(it) },
+                    text = phaseEyebrow(state.calibrationPhase),
                     style = MaterialTheme.typography.bodySmall,
+                    color = ReFitPrimaryDark
+                )
+
+                Text(
+                    text = phaseTitle(state.calibrationPhase),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+
+                Text(
+                    text = phaseDescription(state.calibrationPhase),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = ReFitSubtext,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 6.dp)
                 )
+
+                if (
+                    state.calibrationPhase == CalibrationPhase.REST ||
+                    state.calibrationPhase == CalibrationPhase.CONTRACT
+                ) {
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    LinearProgressIndicator(
+                        progress = { state.calibrationProgress.coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp),
+                        color = ReFitPrimary,
+                        trackColor = ReFitPrimary.copy(alpha = 0.14f)
+                    )
+
+                    Text(
+                        text = ((state.calibrationProgress * 3f)
+                            .coerceIn(0f, 3f))
+                            .let { "%.1f / 3.0초".format(it) },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ReFitSubtext,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                if (state.calibrationPhase == CalibrationPhase.COMPLETE) {
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Text(
+                        text = "✓ 예시 기준값 생성 완료",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ReFitSuccess,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Text(
+                        text = "휴식 기준  " + formatBaseline(state.calibrationRest),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 10.dp)
+                    )
+
+                    Text(
+                        text = "가벼운 수축 기준  " + formatBaseline(state.calibrationActive),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 5.dp)
+                    )
+                }
             }
 
-            if (state.calibrationPhase == CalibrationPhase.COMPLETE) {
-                Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-                Text(
-                    text = "✓ 예시 기준값 생성 완료",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ReFitSuccess,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = "휴식 기준  " + formatBaseline(state.calibrationRest),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 10.dp)
-                )
-
-                Text(
-                    text = "가벼운 수축 기준  " + formatBaseline(state.calibrationActive),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 5.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Text(
-            text = if (state.sourceMode.isMock) {
-                "이 기준값은 실제 사용자 측정값이 아닌 시연용 예시 데이터이며 임상적 해석에 사용할 수 없습니다."
-            } else {
-                "기준값은 이번 세션 내 비교를 위한 값이며 임상적 정상 범위를 판정하지 않습니다."
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = ReFitSubtext
-        )
-
-        if (state.errorMessage != null) {
             Text(
-                text = state.errorMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = ReFitDanger,
-                modifier = Modifier.padding(top = 12.dp)
+                text = "이 기준값은 실제 사용자 측정값이 아닌 시연용 예시 데이터이며 임상적 해석에 사용할 수 없습니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ReFitSubtext
             )
-        }
 
-        Spacer(modifier = Modifier.weight(1f))
+            if (state.errorMessage != null) {
+                Text(
+                    text = state.errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitDanger,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
         when (state.calibrationPhase) {
             CalibrationPhase.IDLE -> {
@@ -180,7 +184,7 @@ fun CalibrationScreen(
                     onClick = onStartCalibration,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp)
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
                         .height(54.dp),
                     shape = ReFitButtonShape,
                     colors = ButtonDefaults.buttonColors(containerColor = ReFitPrimary),
@@ -198,7 +202,7 @@ fun CalibrationScreen(
                     onClick = onContinue,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp)
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
                         .height(54.dp),
                     shape = ReFitButtonShape,
                     colors = ButtonDefaults.buttonColors(containerColor = ReFitPrimary),
@@ -213,7 +217,14 @@ fun CalibrationScreen(
 
             CalibrationPhase.REST,
             CalibrationPhase.CONTRACT -> {
-                Spacer(modifier = Modifier.height(78.dp))
+                Text(
+                    text = "예시 데이터 생성 중...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ReFitSubtext,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 24.dp)
+                )
             }
         }
     }
