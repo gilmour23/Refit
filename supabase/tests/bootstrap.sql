@@ -14,3 +14,6 @@ create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
 grant usage on schema auth, public to authenticated, anon;
+-- Reproduce hosted Supabase's permissive table defaults so schema.sql must
+-- explicitly remove privileges that bypass row-level security (e.g. TRUNCATE).
+alter default privileges in schema public grant all on tables to authenticated, anon;

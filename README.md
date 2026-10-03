@@ -53,6 +53,7 @@ Supabase 요약 기록 동기화
 - 사용자 본인 데이터만 읽기/쓰기 가능
 - Android에는 publishable key만 사용
 - raw EMG를 DB row 단위로 업로드하지 않음
+- Supabase 기본 테이블 권한을 회수하고 authenticated에 필요한 CRUD만 부여
 
 ## Supabase 설정
 
@@ -70,6 +71,11 @@ Supabase SQL Editor에서 다음 파일을 실행합니다.
 ```text
 supabase/schema.sql
 ```
+
+2026-10-03에 서울 리전 ReFit 프로젝트에 스키마와 계정별 접근 정책을 배포했습니다.
+서버 검증과 실기기에서 남은 확인 항목은
+[`docs/verification/2026-10-03-supabase-deployment.md`](docs/verification/2026-10-03-supabase-deployment.md)에 기록했습니다.
+이 프로젝트는 이메일 회원가입 시 확인 메일 인증이 필요합니다.
 
 ## BLE 센서 연결
 

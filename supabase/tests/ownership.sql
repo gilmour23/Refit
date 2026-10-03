@@ -1,7 +1,27 @@
--- Run bootstrap.sql and schema.sql first in disposable database refit_test.
+-- Local: run bootstrap.sql and schema.sql first in disposable refit_test.
+-- Hosted: run this transaction only, without bootstrap; all fixtures roll back.
 \set ON_ERROR_STOP on
 begin;
-insert into auth.users values
+do $$ declare table_name text; role_name text; privilege_name text; begin
+  foreach table_name in array array['public.profiles', 'public.rehab_sessions'] loop
+    foreach privilege_name in array array['SELECT', 'INSERT', 'UPDATE', 'DELETE'] loop
+      if has_table_privilege('anon', table_name, privilege_name) then
+        raise exception 'Anonymous client retains % on %', privilege_name, table_name;
+      end if;
+      if not has_table_privilege('authenticated', table_name, privilege_name) then
+        raise exception 'Authenticated client lacks % on %', privilege_name, table_name;
+      end if;
+    end loop;
+    foreach role_name in array array['anon', 'authenticated'] loop
+      foreach privilege_name in array array['TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN'] loop
+        if has_table_privilege(role_name, table_name, privilege_name) then
+          raise exception 'Client % retains % on %', role_name, privilege_name, table_name;
+        end if;
+      end loop;
+    end loop;
+  end loop;
+end $$;
+insert into auth.users(id) values
  ('11111111-1111-1111-1111-111111111111'),
  ('22222222-2222-2222-2222-222222222222');
 insert into public.profiles(id) values ('22222222-2222-2222-2222-222222222222');

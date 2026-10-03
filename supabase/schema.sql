@@ -38,6 +38,9 @@ create table if not exists public.rehab_sessions (
 alter table public.profiles enable row level security;
 alter table public.rehab_sessions enable row level security;
 
+-- Hosted projects may grant ALL by default; RLS does not restrict TRUNCATE.
+revoke all on public.profiles, public.rehab_sessions from anon, authenticated;
+
 grant select, insert, update, delete
 on public.profiles, public.rehab_sessions
 to authenticated;

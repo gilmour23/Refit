@@ -3,6 +3,10 @@ package com.refit.app.ui.session
 import android.app.Application
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
+import com.refit.app.data.local.ReFitDatabase
+import com.refit.app.data.remote.RehabSessionRemoteDataSource
+import com.refit.app.data.repository.RehabSessionRepository
+import com.refit.app.data.repository.SessionSyncCoordinator
 import com.refit.app.data.model.EmgSample
 import com.refit.app.data.source.EmgConnectionState
 import com.refit.app.data.source.EmgDataSource
@@ -29,7 +33,13 @@ class SessionLogoutTest {
         val source = TrackingSource()
         val store = ViewModelStore()
         try {
-            val vm = SessionViewModel(ApplicationProvider.getApplicationContext<Application>(), "owner-a", source)
+            val application = ApplicationProvider.getApplicationContext<Application>()
+            val repository = RehabSessionRepository(ReFitDatabase.getInstance(application).rehabSessionDao())
+            // This acquisition/logout test uses real Room and the coordinator in
+            // offline mode; SDK networking and lifecycle are tested separately.
+            val coordinator = SessionSyncCoordinator(repository, RehabSessionRemoteDataSource(null))
+            val vm = SessionViewModel(application, "owner-a", source,
+                repository = repository, syncCoordinator = coordinator)
             store.put("session", vm)
             vm.startSession()
             assertTrue(source.connected)
