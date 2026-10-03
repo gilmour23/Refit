@@ -107,14 +107,23 @@ private fun SessionHistoryCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 MetricText(
-                    label = "최대값",
-                    value = "%.4f".format(session.maxActivation)
+                    label = "Peak",
+                    value = "%.4f".format(session.peakActivation)
                 )
                 MetricText(
                     label = "시간",
                     value = formatDuration(session.durationSeconds)
                 )
             }
+
+            Text(
+                text = when (session.syncStatus.name) {
+                    "SYNCED" -> "클라우드 동기화 완료"
+                    "FAILED" -> "동기화 재시도 필요"
+                    else -> "로컬 저장됨"
+                },
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
