@@ -14,6 +14,8 @@ import com.refit.app.data.source.MockEmgDataSource
 import com.refit.app.signal.EmgSignalProcessor
 import com.refit.app.signal.RealtimeEmgWindow
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -216,6 +218,15 @@ class SessionViewModel(
     override fun onCleared() {
         emgJob?.cancel()
         timerJob?.cancel()
+        sessionSamples.clear()
+        realtimeWindow.clear()
+        _uiState.value = SessionUiState()
+        // viewModelScope has already been cancelled at this point. A separate
+        // one-shot cleanup releases the sensor connection without saving an
+        // abandoned exercise to a different account.
+        CoroutineScope(Dispatchers.Main.immediate).launch {
+            runCatching { dataSource.disconnect() }
+        }
         super.onCleared()
     }
 }

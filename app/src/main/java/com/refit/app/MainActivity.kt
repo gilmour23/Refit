@@ -10,6 +10,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelStoreOwner
 import com.refit.app.auth.AuthState
 import com.refit.app.ui.auth.AuthViewModel
 import com.refit.app.ui.auth.LoginScreen
@@ -83,10 +85,13 @@ private fun ReFitRoot() {
         }
 
         is AuthState.Authenticated -> {
-            AuthenticatedApp(
-                auth = state,
-                onSignOut = authViewModel::signOut
-            )
+            key(state.userId) {
+                AuthenticatedApp(
+                    auth = state,
+                    accountOwner = authViewModel.accountViewModelStoreOwner,
+                    onSignOut = authViewModel::signOut
+                )
+            }
         }
     }
 }
@@ -94,6 +99,7 @@ private fun ReFitRoot() {
 @Composable
 private fun AuthenticatedApp(
     auth: AuthState.Authenticated,
+    accountOwner: ViewModelStoreOwner,
     onSignOut: () -> Unit
 ) {
     val context = LocalContext.current
@@ -105,6 +111,7 @@ private fun AuthenticatedApp(
     val page = AppPage.valueOf(pageName)
 
     val sessionViewModel: SessionViewModel = viewModel(
+        viewModelStoreOwner = accountOwner,
         key = "session-${auth.userId}",
         factory = SessionViewModelFactory(
             application = application,
@@ -117,6 +124,7 @@ private fun AuthenticatedApp(
         AppPage.HOME -> {
             HomeScreen(
                 email = auth.email,
+                sessionRefreshPending = auth.sessionRefreshPending,
                 onStartExercise = {
                     pageName = AppPage.SESSION.name
                 },

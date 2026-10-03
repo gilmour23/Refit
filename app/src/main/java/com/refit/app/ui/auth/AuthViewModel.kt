@@ -1,6 +1,8 @@
 package com.refit.app.ui.auth
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewModelScope
 import com.refit.app.auth.AuthRepository
 import com.refit.app.auth.AuthState
@@ -9,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 data class AuthUiState(
@@ -20,7 +23,27 @@ class AuthViewModel(
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
+    // Owned by the activity-retained AuthViewModel, so rotation preserves an
+    // exercise, while logout and account changes dispose all account state.
+    val accountViewModelStoreOwner: ViewModelStoreOwner = object : ViewModelStoreOwner {
+        override val viewModelStore = ViewModelStore()
+    }
+    private var activeUserId: String? = null
+    private var lastAuthenticated: AuthState.Authenticated? = null
+
     val authState: StateFlow<AuthState> = repository.authState
+        .map { incoming ->
+            // Android Auth emits Loading when the app loses focus. Retain the
+            // already-known owner until the SDK confirms login or logout.
+            val state = if (incoming == AuthState.Loading) lastAuthenticated ?: incoming else incoming
+            val owner = (state as? AuthState.Authenticated)?.userId
+            if (state != AuthState.Loading && owner != activeUserId) {
+                accountViewModelStoreOwner.viewModelStore.clear()
+                activeUserId = owner
+            }
+            lastAuthenticated = state as? AuthState.Authenticated
+            state
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
@@ -89,5 +112,10 @@ class AuthViewModel(
                 )
             }
         }
+    }
+
+    override fun onCleared() {
+        accountViewModelStoreOwner.viewModelStore.clear()
+        super.onCleared()
     }
 }

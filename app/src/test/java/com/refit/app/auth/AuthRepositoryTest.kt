@@ -15,6 +15,9 @@ import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -35,10 +38,11 @@ class AuthRepositoryTest {
         context.getSharedPreferences("auth-test", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
-    private fun client(): SupabaseClient = createSupabaseClient("https://test.supabase.co", "public-test-key") {
-        httpEngine = MockEngine { throw IOException("offline") }
+    private fun client(engine: MockEngine = MockEngine { throw IOException("offline") }): SupabaseClient = createSupabaseClient("https://test.supabase.co", "public-test-key") {
+        httpEngine = engine
         install(Auth) {
-            autoSetupPlatform = false
+            autoSetupPlatform = true
+            enableLifecycleCallbacks = false
             alwaysAutoRefresh = false
             autoLoadFromStorage = true
             autoSaveToStorage = true
@@ -54,7 +58,30 @@ class AuthRepositoryTest {
         tokenType = "bearer", user = UserInfo(aud = "authenticated", id = id, email = "$id@example.com")
     )
 
-    @Test fun restoresOwnerAfterClientRecreationFromPersistedStorage() = runBlocking {
+    @Test fun passwordLoginPersistsSessionWithoutPersistingPassword() = runBlocking {
+        val first = client(MockEngine {
+            respond("""{
+                "access_token":"test-access", "refresh_token":"test-refresh",
+                "expires_in":3600, "token_type":"bearer",
+                "user":{"aud":"authenticated", "id":"owner-a", "email":"owner-a@example.com"}
+            }""", HttpStatusCode.OK, headersOf("Content-Type", "application/json"))
+        })
+        try {
+            first.auth.awaitInitialization()
+            AuthRepository(first).signIn("owner-a@example.com", "test-password")
+            assertEquals(AuthState.Authenticated("owner-a", "owner-a@example.com"), AuthRepository(first).authState.first())
+            val saved = context.getSharedPreferences("auth-test", Context.MODE_PRIVATE).all.values.joinToString()
+            assertFalse(saved.contains("test-password"))
+            assertTrue(saved.contains("test-refresh"))
+        } finally { first.close() }
+        val reopened = client()
+        try {
+            reopened.auth.awaitInitialization()
+            assertEquals(AuthState.Authenticated("owner-a", "owner-a@example.com"), AuthRepository(reopened).authState.first())
+        } finally { reopened.close() }
+    }
+
+    @Test(timeout = 30000) fun restoresOwnerAfterClientRecreationFromPersistedStorage() = runBlocking {
         val first = client()
         first.auth.awaitInitialization()
         first.auth.importSession(session("owner-a"), autoRefresh = false)
@@ -67,7 +94,7 @@ class AuthRepositoryTest {
         } finally { reopened.close() }
     }
 
-    @Test fun offlineLogoutClearsMemoryAndPersistedSession() = runBlocking {
+    @Test(timeout = 30000) fun offlineLogoutClearsMemoryAndPersistedSession() = runBlocking {
         val first = client()
         first.auth.awaitInitialization()
         first.auth.importSession(session("owner-a"), autoRefresh = false)

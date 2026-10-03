@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun HomeScreen(
     email: String?,
+    sessionRefreshPending: Boolean = false,
     onStartExercise: () -> Unit,
     onOpenHistory: () -> Unit,
     onSignOut: () -> Unit
@@ -35,6 +36,10 @@ fun HomeScreen(
             text = email ?: "로그인 사용자",
             style = MaterialTheme.typography.bodyMedium
         )
+
+        if (sessionRefreshPending) {
+            Text("계정 연결을 복구 중입니다. 재활 기록은 이 기기에 저장됩니다.")
+        }
 
         Text(
             text = "오늘의 재활",

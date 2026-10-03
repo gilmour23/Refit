@@ -67,13 +67,13 @@
 - Produces: `getPendingSync(userId: String)`
 - Produces: `updateSyncState(localId: Long, status: SyncStatus, remoteId: String?)`
 
-- [ ] Extend entity with `userId`, `remoteId`, `syncStatus`, `updatedAt`.
-- [ ] Add Room type conversion for `SyncStatus`.
-- [ ] Add a schema migration rather than destructive migration.
-- [ ] Replace global history/latest queries with user-scoped queries.
-- [ ] Add pending-sync and update-sync DAO operations.
-- [ ] Update repository APIs and dependent code.
-- [ ] Verify one user's history cannot return another user's sessions.
+- [x] Extend entity with `userId`, `remoteId`, `syncStatus`, `updatedAt`.
+- [x] Add Room type conversion for `SyncStatus`.
+- [x] Add a schema migration rather than destructive migration.
+- [x] Replace global history/latest queries with user-scoped queries.
+- [x] Add pending-sync and update-sync DAO operations.
+- [x] Update repository APIs and dependent code.
+- [x] Verify one user's history cannot return another user's sessions.
 
 ### Task 3: Authentication boundary and persistent session routing
 
@@ -94,12 +94,12 @@
 - Produces: `signOut()`
 - Produces: authenticated `userId` for session ownership.
 
-- [ ] Add pinned Supabase Kotlin dependencies required for Auth/Postgrest and Android-compatible Ktor.
-- [ ] Read Supabase URL/publishable key from BuildConfig/local Gradle properties; do not commit secrets.
-- [ ] Implement loading/authenticated/unauthenticated/error auth states.
-- [ ] Restore persisted session on app start using the Supabase client.
-- [ ] Add login/sign-up UI and root auth routing.
-- [ ] Ensure logout clears active UI user context.
+- [x] Add pinned Supabase Kotlin dependencies required for Auth/Postgrest and Android-compatible Ktor.
+- [x] Read Supabase URL/publishable key from BuildConfig/local Gradle properties; do not commit secrets.
+- [x] Implement loading/authenticated/unauthenticated/error auth states.
+- [x] Restore persisted session on app start using the Supabase client.
+- [x] Add login/sign-up UI and root auth routing.
+- [x] Ensure logout clears active UI user context.
 
 ### Task 4: Decouple session logic from concrete user and add realtime metrics
 
@@ -178,3 +178,8 @@
 - [ ] Add progress/history summaries from the active user's sessions.
 - [ ] Verify logout/login as another user changes visible history.
 - [ ] Verify offline exercise -> result -> later sync path manually.
+
+
+## Delivery checkpoints
+
+2026-10-03, second delivery: Task 2/3 automated verification completed (17 tests, debug APK build). Supabase project provisioning and live server/device acceptance remain pending. See `docs/verification/2026-10-03-phase2-identity.md`. Later tasks retain their existing implementation and require their own agreed validation.

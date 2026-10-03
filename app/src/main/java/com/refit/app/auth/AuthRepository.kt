@@ -5,6 +5,9 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.SignOutScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -34,16 +37,21 @@ class AuthRepository(
                     is SessionStatus.NotAuthenticated ->
                         AuthState.Unauthenticated
 
-                    is SessionStatus.RefreshFailure ->
-                        AuthState.Error(
-                            "로그인 세션을 갱신하지 못했습니다. 네트워크 연결을 확인해주세요."
-                        )
+                    is SessionStatus.RefreshFailure -> {
+                        // RefreshFailure is retryable; revoked sessions are reported
+                        // by the SDK as NotAuthenticated and never use this fallback.
+                        val user = client.auth.sessionManager.loadSessionOrNull()?.user
+                        if (user == null) {
+                            AuthState.Error("로그인 세션을 갱신하지 못했습니다. 다시 로그인해주세요.")
+                        } else {
+                            AuthState.Authenticated(user.id, user.email, sessionRefreshPending = true)
+                        }
+                    }
                 }
             }
             ?: flowOf(
                 AuthState.Error(
-                    "Supabase가 설정되지 않았습니다. local.properties에 " +
-                        "SUPABASE_URL과 SUPABASE_PUBLISHABLE_KEY를 설정해주세요."
+                    "계정 서비스를 사용할 수 없습니다. 관리자에게 문의해주세요."
                 )
             )
 
@@ -64,7 +72,14 @@ class AuthRepository(
     }
 
     suspend fun signOut() {
-        requireClient().auth.signOut()
+        val authClient = requireClient().auth
+        try {
+            authClient.signOut(SignOutScope.LOCAL)
+        } finally {
+            // An offline HTTP failure must not leave reusable credentials on
+            // a shared device. Also finish local deletion on cancellation.
+            withContext(NonCancellable) { authClient.clearSession() }
+        }
     }
 
     private fun requireClient(): SupabaseClient =
