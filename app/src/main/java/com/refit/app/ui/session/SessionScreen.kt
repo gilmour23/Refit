@@ -22,7 +22,8 @@ import com.refit.app.ui.result.ResultScreen
 
 @Composable
 fun SessionScreen(
-    viewModel: SessionViewModel
+    viewModel: SessionViewModel,
+    onBackToHome: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -38,7 +39,10 @@ fun SessionScreen(
     if (result != null) {
         ResultScreen(
             result = result,
-            onDone = viewModel::resetSession
+            onDone = {
+                viewModel.resetSession()
+                onBackToHome()
+            }
         )
         return
     }
@@ -67,12 +71,19 @@ fun SessionScreen(
             }
         )
 
+        state.message?.let { message ->
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text("현재 근활성")
+                Text("실시간 RMS")
                 Text(
                     text = "%.3f".format(state.currentActivation),
                     style = MaterialTheme.typography.headlineMedium
@@ -114,6 +125,13 @@ fun SessionScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("이전 기록")
+            }
+
+            OutlinedButton(
+                onClick = onBackToHome,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("홈으로")
             }
         } else {
             Button(
