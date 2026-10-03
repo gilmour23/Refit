@@ -5,15 +5,20 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.refit.app.data.model.SyncStatus
+import java.util.UUID
 
 @Entity(
     tableName = "rehab_sessions",
-    indices = [Index(value = ["userId", "createdAt"])]
+    indices = [
+        Index(value = ["userId", "createdAt"]),
+        Index(value = ["userId", "clientLocalId"], unique = true)
+    ]
 )
 data class RehabSessionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val remoteId: String? = null,
+    val clientLocalId: String = UUID.randomUUID().toString(),
     val userId: String,
     val createdAt: Long,
     val exerciseName: String,
