@@ -4,17 +4,52 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [RehabSessionEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
+@TypeConverters(RoomConverters::class)
 abstract class ReFitDatabase : RoomDatabase() {
 
     abstract fun rehabSessionDao(): RehabSessionDao
 
     companion object {
+        private const val LEGACY_USER_ID = "__legacy__"
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE rehab_sessions ADD COLUMN remoteId TEXT"
+                )
+                database.execSQL(
+                    "ALTER TABLE rehab_sessions " +
+                        "ADD COLUMN userId TEXT NOT NULL DEFAULT '$LEGACY_USER_ID'"
+                )
+                database.execSQL(
+                    "ALTER TABLE rehab_sessions " +
+                        "ADD COLUMN syncStatus TEXT NOT NULL DEFAULT 'LOCAL_ONLY'"
+                )
+                database.execSQL(
+                    "ALTER TABLE rehab_sessions " +
+                        "ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0"
+                )
+                database.execSQL(
+                    "UPDATE rehab_sessions SET updatedAt = createdAt " +
+                        "WHERE updatedAt = 0"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS " +
+                        "index_rehab_sessions_userId_createdAt " +
+                        "ON rehab_sessions(userId, createdAt)"
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: ReFitDatabase? = null
 
@@ -24,9 +59,12 @@ abstract class ReFitDatabase : RoomDatabase() {
                     context.applicationContext,
                     ReFitDatabase::class.java,
                     "refit.db"
-                ).build().also { database ->
-                    INSTANCE = database
-                }
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .build()
+                    .also { database ->
+                        INSTANCE = database
+                    }
             }
         }
     }
