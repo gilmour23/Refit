@@ -193,9 +193,9 @@ fun HomeScreen(
             }
 
             Text(
-                text = "착용 확인",
+                text = "시작 전 확인",
                 style = MaterialTheme.typography.bodyMedium,
-                color = ReFitPrimary
+                color = ReFitSubtext
             )
         }
 
