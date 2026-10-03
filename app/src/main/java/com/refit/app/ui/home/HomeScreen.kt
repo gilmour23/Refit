@@ -88,7 +88,7 @@ fun HomeScreen(
         )
 
         Text(
-            text = "약 10분 · 10회 × 5세트",
+            text = "시연 약 1분 · 실제 운동 계획 예시 10회 × 5세트",
             style = MaterialTheme.typography.bodyLarge,
             color = ReFitSubtext,
             modifier = Modifier.padding(top = 8.dp)
@@ -107,7 +107,7 @@ fun HomeScreen(
         ) {
             Column {
                 Text(
-                    text = "TODAY",
+                    text = "DEMO",
                     style = MaterialTheme.typography.bodySmall,
                     color = ReFitPrimarySoft
                 )
@@ -158,7 +158,7 @@ fun HomeScreen(
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     Text(
-                        text = "재활 준비",
+                        text = "데모 시작",
                         fontWeight = FontWeight.SemiBold
                     )
                 }
