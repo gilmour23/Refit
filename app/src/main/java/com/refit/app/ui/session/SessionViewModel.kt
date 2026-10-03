@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.refit.app.data.local.ReFitDatabase
 import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.data.model.RehabSessionResult
+import com.refit.app.data.model.SyncStatus
 import com.refit.app.data.repository.RehabSessionRepository
 import com.refit.app.data.source.EmgDataSource
 import com.refit.app.data.source.MockEmgDataSource
 import com.refit.app.signal.EmgSignalProcessor
+import com.refit.app.signal.RealtimeEmgWindow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,18 +28,22 @@ data class SessionUiState(
     val result: RehabSessionResult? = null,
     val history: List<RehabSessionEntity> = emptyList(),
     val showHistory: Boolean = false,
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    val message: String? = null
 )
 
 class SessionViewModel(
-    application: Application
+    application: Application,
+    private val userId: String,
+    private val dataSource: EmgDataSource = MockEmgDataSource(),
+    realtimeWindowSize: Int = 50
 ) : AndroidViewModel(application) {
-
-    private val dataSource: EmgDataSource = MockEmgDataSource()
 
     private val repository = RehabSessionRepository(
         ReFitDatabase.getInstance(application).rehabSessionDao()
     )
+
+    private val realtimeWindow = RealtimeEmgWindow(realtimeWindowSize)
 
     private val _uiState = MutableStateFlow(SessionUiState())
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
@@ -49,7 +55,7 @@ class SessionViewModel(
 
     init {
         viewModelScope.launch {
-            repository.observeAll().collect { history ->
+            repository.observeAll(userId).collect { history ->
                 _uiState.value = _uiState.value.copy(
                     history = history
                 )
@@ -61,9 +67,19 @@ class SessionViewModel(
         if (_uiState.value.running) return
 
         sessionSamples.clear()
+        realtimeWindow.clear()
 
         emgJob = viewModelScope.launch {
-            dataSource.connect()
+            runCatching {
+                dataSource.connect()
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    connected = false,
+                    running = false,
+                    message = error.message ?: "센서 연결에 실패했습니다."
+                )
+                return@launch
+            }
 
             _uiState.value = _uiState.value.copy(
                 connected = true,
@@ -73,7 +89,8 @@ class SessionViewModel(
                 elapsedSeconds = 0L,
                 result = null,
                 showHistory = false,
-                isSaving = false
+                isSaving = false,
+                message = null
             )
 
             dataSource.observeEmg().collect { sample ->
@@ -84,7 +101,7 @@ class SessionViewModel(
 
                 _uiState.value = _uiState.value.copy(
                     samples = visibleSamples,
-                    currentActivation = sample.value
+                    currentActivation = realtimeWindow.add(sample.value)
                 )
             }
         }
@@ -108,37 +125,48 @@ class SessionViewModel(
         val samplesSnapshot = sessionSamples.toList()
         val createdAt = System.currentTimeMillis()
 
-        val baseResult = RehabSessionResult(
-            durationSeconds = duration,
-            sampleCount = samplesSnapshot.size,
-            rms = EmgSignalProcessor.rms(samplesSnapshot),
-            mav = EmgSignalProcessor.mav(samplesSnapshot),
-            maxActivation = samplesSnapshot.maxOrNull() ?: 0f
-        )
-
         emgJob?.cancel()
         timerJob?.cancel()
 
         _uiState.value = _uiState.value.copy(
             connected = false,
             running = false,
-            isSaving = true
+            isSaving = samplesSnapshot.isNotEmpty()
         )
 
         viewModelScope.launch {
-            dataSource.disconnect()
+            runCatching { dataSource.disconnect() }
 
-            val previous = repository.getLatest()
+            if (samplesSnapshot.isEmpty()) {
+                _uiState.value = _uiState.value.copy(
+                    isSaving = false,
+                    message = "측정된 EMG 데이터가 없어 세션을 저장하지 않았습니다."
+                )
+                return@launch
+            }
+
+            val baseResult = RehabSessionResult(
+                durationSeconds = duration,
+                sampleCount = samplesSnapshot.size,
+                rms = EmgSignalProcessor.rms(samplesSnapshot),
+                mav = EmgSignalProcessor.mav(samplesSnapshot),
+                peakActivation = EmgSignalProcessor.peakMagnitude(samplesSnapshot)
+            )
+
+            val previous = repository.getLatest(userId)
 
             val sessionId = repository.insert(
                 RehabSessionEntity(
+                    userId = userId,
                     createdAt = createdAt,
                     exerciseName = "손목 폄 운동",
                     durationSeconds = duration,
                     sampleCount = samplesSnapshot.size,
                     rms = baseResult.rms,
                     mav = baseResult.mav,
-                    maxActivation = baseResult.maxActivation
+                    peakActivation = baseResult.peakActivation,
+                    syncStatus = SyncStatus.LOCAL_ONLY,
+                    updatedAt = createdAt
                 )
             )
 
@@ -147,7 +175,8 @@ class SessionViewModel(
                     previousRms = previous?.rms,
                     savedSessionId = sessionId
                 ),
-                isSaving = false
+                isSaving = false,
+                message = null
             )
         }
     }
@@ -168,6 +197,7 @@ class SessionViewModel(
 
     fun resetSession() {
         sessionSamples.clear()
+        realtimeWindow.clear()
         _uiState.value = SessionUiState(
             history = _uiState.value.history
         )
