@@ -52,8 +52,8 @@ fun ResultScreen(
         )
 
         ResultItem(
-            label = "최대 근활성",
-            value = "%.4f".format(result.maxActivation)
+            label = "Peak 근활성",
+            value = "%.4f".format(result.peakActivation)
         )
 
         ResultItem(
