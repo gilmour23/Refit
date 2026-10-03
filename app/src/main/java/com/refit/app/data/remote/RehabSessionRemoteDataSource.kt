@@ -33,10 +33,8 @@ class RehabSessionRemoteDataSource(
 
         return supabase
             .from("rehab_sessions")
-            .upsert(
-                value = dto,
+            .upsert(value = dto) {
                 onConflict = "user_id,client_local_id"
-            ) {
                 select(Columns.list("id"))
             }
             .decodeSingle<RemoteSessionId>()
