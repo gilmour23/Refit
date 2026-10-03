@@ -28,6 +28,10 @@ abstract class ReFitDatabase : RoomDatabase() {
                 )
                 database.execSQL(
                     "ALTER TABLE rehab_sessions " +
+                        "ADD COLUMN clientLocalId TEXT NOT NULL DEFAULT ''"
+                )
+                database.execSQL(
+                    "ALTER TABLE rehab_sessions " +
                         "ADD COLUMN userId TEXT NOT NULL DEFAULT '$LEGACY_USER_ID'"
                 )
                 database.execSQL(
@@ -39,6 +43,11 @@ abstract class ReFitDatabase : RoomDatabase() {
                         "ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0"
                 )
                 database.execSQL(
+                    "UPDATE rehab_sessions " +
+                        "SET clientLocalId = lower(hex(randomblob(16))) " +
+                        "WHERE clientLocalId = ''"
+                )
+                database.execSQL(
                     "UPDATE rehab_sessions SET updatedAt = createdAt " +
                         "WHERE updatedAt = 0"
                 )
@@ -46,6 +55,11 @@ abstract class ReFitDatabase : RoomDatabase() {
                     "CREATE INDEX IF NOT EXISTS " +
                         "index_rehab_sessions_userId_createdAt " +
                         "ON rehab_sessions(userId, createdAt)"
+                )
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                        "index_rehab_sessions_userId_clientLocalId " +
+                        "ON rehab_sessions(userId, clientLocalId)"
                 )
             }
         }
