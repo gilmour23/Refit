@@ -86,7 +86,7 @@ fun ExerciseIntroScreen(
             ) {
                 PlanValue(label = "반복", value = "10회")
                 PlanValue(label = "세트", value = "5세트")
-                PlanValue(label = "예상 시간", value = "10분")
+                PlanValue(label = "예상 시간", value = "시연 30초+")
             }
 
             Spacer(modifier = Modifier.height(22.dp))
