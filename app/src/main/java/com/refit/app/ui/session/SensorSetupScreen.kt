@@ -65,7 +65,15 @@ fun SensorSetupScreen(
                 onClick = onBack
             )
 
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "준비 1 / 3",
+                style = MaterialTheme.typography.bodySmall,
+                color = ReFitPrimary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "보조기와 센서 위치를\n먼저 확인할게요.",
