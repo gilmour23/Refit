@@ -153,7 +153,7 @@ fun ExerciseIntroScreen(
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
             Text(
-                text = "예시 데이터로 시작",
+                text = "데모 세션 시작",
                 fontWeight = FontWeight.SemiBold
             )
         }
