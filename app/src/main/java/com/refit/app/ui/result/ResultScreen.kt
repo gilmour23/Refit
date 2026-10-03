@@ -50,13 +50,13 @@ fun ResultScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = "오늘 재활을 마쳤어요.",
+                text = if (result.signalSource == "MOCK") "데모 세션을 마쳤어요." else "오늘 재활을 마쳤어요.",
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Text(
                 text = if (result.saveSucceeded) {
-                    "손목 폄 운동 기록을 저장했습니다."
+                    if (result.signalSource == "MOCK") "예시 sEMG 데이터 기반 결과를 저장했습니다." else "손목 폄 운동 기록을 저장했습니다."
                 } else {
                     "운동 결과를 계산했습니다. 기록 저장 상태를 확인해주세요."
                 },
