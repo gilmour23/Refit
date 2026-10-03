@@ -8,6 +8,7 @@ import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.data.model.RehabSessionResult
 import com.refit.app.data.model.SyncStatus
 import com.refit.app.data.repository.RehabSessionRepository
+import com.refit.app.data.repository.SessionSyncCoordinator
 import com.refit.app.data.source.EmgDataSource
 import com.refit.app.data.source.MockEmgDataSource
 import com.refit.app.signal.EmgSignalProcessor
@@ -43,6 +44,7 @@ class SessionViewModel(
         ReFitDatabase.getInstance(application).rehabSessionDao()
     )
 
+    private val syncCoordinator = SessionSyncCoordinator(repository)
     private val realtimeWindow = RealtimeEmgWindow(realtimeWindowSize)
 
     private val _uiState = MutableStateFlow(SessionUiState())
@@ -60,6 +62,10 @@ class SessionViewModel(
                     history = history
                 )
             }
+        }
+
+        viewModelScope.launch {
+            syncCoordinator.syncPending(userId)
         }
     }
 
@@ -178,6 +184,10 @@ class SessionViewModel(
                 isSaving = false,
                 message = null
             )
+
+            launch {
+                syncCoordinator.syncSession(sessionId)
+            }
         }
     }
 
