@@ -8,6 +8,9 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.SignOutScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -15,6 +18,11 @@ import kotlinx.coroutines.flow.map
 class AuthRepository(
     private val client: SupabaseClient? = SupabaseClientProvider.clientOrNull()
 ) {
+    private companion object {
+        // Activities can create separate repositories over the app's shared
+        // client. An earlier root's logout must finish before a new login.
+        val authOperation = Mutex()
+    }
 
     val authState: Flow<AuthState> =
         client?.auth?.sessionStatus
@@ -55,7 +63,7 @@ class AuthRepository(
                 )
             )
 
-    suspend fun signIn(email: String, password: String) {
+    suspend fun signIn(email: String, password: String) = authOperation.withLock {
         val authClient = requireClient().auth
         authClient.signInWith(Email) {
             this.email = email
@@ -63,7 +71,7 @@ class AuthRepository(
         }
     }
 
-    suspend fun signUp(email: String, password: String) {
+    suspend fun signUp(email: String, password: String) = authOperation.withLock {
         val authClient = requireClient().auth
         authClient.signUpWith(Email) {
             this.email = email
@@ -71,13 +79,25 @@ class AuthRepository(
         }
     }
 
-    suspend fun signOut() {
+    suspend fun signOut() = authOperation.withLock {
         val authClient = requireClient().auth
+        val accessToken = authClient.currentAccessTokenOrNull()
+            ?: authClient.sessionManager.loadSessionOrNull()?.accessToken
+        // Delete reusable credentials before making any HTTP request. Keep
+        // only the outgoing JWT in memory for the SDK's explicit-token logout.
+        withContext(NonCancellable) {
+            authClient.stopAutoRefreshForCurrentSession()
+            authClient.clearSession()
+        }
         try {
-            authClient.signOut(SignOutScope.LOCAL)
+            if (accessToken != null) {
+                withTimeout(10_000) {
+                    authClient.admin.signOut(accessToken, SignOutScope.LOCAL)
+                }
+            }
         } finally {
-            // An offline HTTP failure must not leave reusable credentials on
-            // a shared device. Also finish local deletion on cancellation.
+            // Finish cleanup even on cancellation or a late SDK emission.
+            // The mutex prevents this cleanup from deleting a new login.
             withContext(NonCancellable) { authClient.clearSession() }
         }
     }
