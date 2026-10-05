@@ -12,3 +12,4 @@ class RoomConverters {
     fun stringToSyncStatus(value: String): SyncStatus =
         SyncStatus.valueOf(value)
 }
+

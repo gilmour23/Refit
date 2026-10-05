@@ -8,6 +8,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RehabSessionDao {
+    @Query("UPDATE rehab_sessions SET pain = :pain, comfort = :comfort WHERE id = :localId AND userId = :userId")
+    suspend fun updatePain(localId: Long, userId: String, pain: String, comfort: String)
+
+    @Query("UPDATE rehab_sessions SET fatigue = :fatigue WHERE id = :localId AND userId = :userId")
+    suspend fun updateFatigue(localId: Long, userId: String, fatigue: String)
+
+    @Query("UPDATE rehab_sessions SET comfort = :comfort WHERE id = :localId AND userId = :userId")
+    suspend fun updateComfort(localId: Long, userId: String, comfort: String)
 
     @Insert
     suspend fun insert(session: RehabSessionEntity): Long
@@ -50,4 +58,3 @@ interface RehabSessionDao {
         userId: String
     )
 }
-

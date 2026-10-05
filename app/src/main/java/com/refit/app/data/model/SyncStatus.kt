@@ -6,3 +6,4 @@ enum class SyncStatus {
     SYNCED,
     FAILED
 }
+

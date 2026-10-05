@@ -4,3 +4,4 @@ data class EmgSample(
     val timestamp: Long,
     val value: Float
 )
+

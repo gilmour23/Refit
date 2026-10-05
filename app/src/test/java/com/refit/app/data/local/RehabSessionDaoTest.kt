@@ -51,6 +51,38 @@ class RehabSessionDaoTest {
         } finally { db.close(); context.deleteDatabase(name) }
     }
 
+    @Test fun migratesV3WithoutLosingExistingPatientRecords() = runBlocking {
+        val name = "migration-v3-test.db"
+        context.deleteDatabase(name)
+        val path = context.getDatabasePath(name); path.parentFile!!.mkdirs()
+        SQLiteDatabase.openOrCreateDatabase(path, null).use { old ->
+            old.execSQL("""CREATE TABLE rehab_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, remoteId TEXT,
+                clientLocalId TEXT NOT NULL, userId TEXT NOT NULL,
+                createdAt INTEGER NOT NULL, exerciseName TEXT NOT NULL,
+                durationSeconds INTEGER NOT NULL, sampleCount INTEGER NOT NULL,
+                rms REAL NOT NULL, mav REAL NOT NULL, maxActivation REAL NOT NULL,
+                syncStatus TEXT NOT NULL, updatedAt INTEGER NOT NULL,
+                completedAttempts INTEGER, plannedAttempts INTEGER,
+                attemptSeconds INTEGER, restSeconds INTEGER, endedEarly INTEGER,
+                dataMode TEXT NOT NULL DEFAULT 'unknown', comfort TEXT
+            )""")
+            old.execSQL("CREATE INDEX index_rehab_sessions_userId_createdAt ON rehab_sessions(userId, createdAt)")
+            old.execSQL("CREATE UNIQUE INDEX index_rehab_sessions_userId_clientLocalId ON rehab_sessions(userId, clientLocalId)")
+            old.execSQL("INSERT INTO rehab_sessions VALUES (1,NULL,'client-1','owner-a',42,'wrist',30,100,2,1,4,'SYNCED',42,3,3,4,6,0,'demo','괜찮아요')")
+            old.version = 3
+        }
+        val db = Room.databaseBuilder(context, ReFitDatabase::class.java, name)
+            .addMigrations(ReFitDatabase.MIGRATION_3_4).build()
+        try {
+            val row = db.rehabSessionDao().getById(1, "owner-a")!!
+            assertEquals(42L, row.createdAt); assertEquals(3, row.completedAttempts)
+            assertEquals("괜찮아요", row.comfort); assertEquals(SyncStatus.SYNCED, row.syncStatus)
+            assertNull(row.pain); assertNull(row.fatigue); assertNull(row.wristSide)
+            assertNull(db.rehabSessionDao().getById(1, "owner-b"))
+        } finally { db.close(); context.deleteDatabase(name) }
+    }
+
     @Test fun migratesV1WithoutAssigningUnownedHistoryToNewAccount() = runBlocking {
         val name = "migration-test.db"
         context.deleteDatabase(name)
@@ -67,10 +99,13 @@ class RehabSessionDaoTest {
             old.version = 1
         }
         val db = Room.databaseBuilder(context, ReFitDatabase::class.java, name)
-            .addMigrations(ReFitDatabase.MIGRATION_1_2).build()
+            .addMigrations(ReFitDatabase.MIGRATION_1_2, ReFitDatabase.MIGRATION_2_3, ReFitDatabase.MIGRATION_3_4).build()
         try {
             val legacy = db.rehabSessionDao().observeAll("__legacy__").first().single()
             assertEquals(42L, legacy.createdAt)
+            assertNull(legacy.completedAttempts)
+            assertNull(legacy.comfort)
+            assertEquals("unknown", legacy.dataMode)
             assertEquals(42L, legacy.updatedAt)
             assertEquals(4f, legacy.peakActivation, 0f)
             assertTrue(legacy.clientLocalId.isNotBlank())

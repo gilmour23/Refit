@@ -16,3 +16,4 @@ sealed interface EmgConnectionState {
         val message: String
     ) : EmgConnectionState
 }
+

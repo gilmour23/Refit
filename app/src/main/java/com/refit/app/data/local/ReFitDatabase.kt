@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [RehabSessionEntity::class],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -64,6 +64,24 @@ abstract class ReFitDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                listOf("completedAttempts", "plannedAttempts", "attemptSeconds", "restSeconds", "endedEarly").forEach {
+                    database.execSQL("ALTER TABLE rehab_sessions ADD COLUMN $it INTEGER")
+                }
+                database.execSQL("ALTER TABLE rehab_sessions ADD COLUMN dataMode TEXT NOT NULL DEFAULT 'unknown'")
+                database.execSQL("ALTER TABLE rehab_sessions ADD COLUMN comfort TEXT")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                listOf("wristSide", "pain", "fatigue").forEach {
+                    database.execSQL("ALTER TABLE rehab_sessions ADD COLUMN $it TEXT")
+                }
+            }
+        }
+
         @Volatile
         private var INSTANCE: ReFitDatabase? = null
 
@@ -74,7 +92,7 @@ abstract class ReFitDatabase : RoomDatabase() {
                     ReFitDatabase::class.java,
                     "refit.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { database ->
                         INSTANCE = database

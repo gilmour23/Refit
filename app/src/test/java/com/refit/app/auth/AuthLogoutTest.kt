@@ -112,7 +112,7 @@ class AuthLogoutTest {
             val exercise = SessionViewModel(application, "owner-a", source, repository = records,
                 syncCoordinator = SessionSyncCoordinator(records, RehabSessionRemoteDataSource(null)))
             vm.accountViewModelStoreOwner.viewModelStore.put("exercise", exercise)
-            exercise.startSession()
+            exercise.configureWristSide("left"); exercise.startSession()
             assertTrue(source.connected)
 
             vm.signOut()

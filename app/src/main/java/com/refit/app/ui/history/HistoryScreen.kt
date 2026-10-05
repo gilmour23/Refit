@@ -1,175 +1,80 @@
 package com.refit.app.ui.history
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.data.model.SyncStatus
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.refit.app.ui.components.*
+import com.refit.app.ui.session.wristLabel
+import com.refit.app.ui.result.SignalDetails
 
 @Composable
-fun HistoryScreen(
-    sessions: List<RehabSessionEntity>,
-    onBack: () -> Unit,
-    isSyncing: Boolean,
-    syncMessage: String?,
-    onRetrySync: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "재활 기록",
-            style = MaterialTheme.typography.headlineLarge
-        )
-
-        Spacer(modifier = Modifier.padding(top = 12.dp))
-
-        OutlinedButton(
-            onClick = onRetrySync,
-            enabled = !isSyncing && sessions.any { it.syncStatus != SyncStatus.SYNCED },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (isSyncing) "동기화 중…" else "미동기화 기록 다시 시도")
+fun HistoryScreen(sessions: List<RehabSessionEntity>, onBack: () -> Unit, isSyncing: Boolean,
+                  syncMessage: String?, onRetrySync: () -> Unit) {
+    var selectedId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val selected = sessions.firstOrNull { it.id == selectedId }
+    if (selected != null) {
+        BackHandler { selectedId = null }
+        HistoryDetailScreen(selected) { selectedId = null }
+        return
+    }
+    BackHandler(onBack = onBack)
+    val pending = sessions.count { it.syncStatus != SyncStatus.SYNCED }
+    Page("운동 기록", footer = { BottomTabs("history", onBack, {}) }) {
+        if (sessions.isEmpty()) Panel {
+            Text("아직 운동 기록이 없어요", style = MaterialTheme.typography.titleMedium)
+            PrimaryAction("홈으로 돌아가기", onBack)
         }
-        syncMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-
-        if (sessions.isEmpty()) {
-            Text(
-                text = "저장된 재활 기록이 없습니다.",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.weight(1f))
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(
-                    items = sessions,
-                    key = { it.id }
-                ) { session ->
-                    SessionHistoryCard(session = session)
+        if (pending > 0) Panel {
+            Text("동기화 대기 ${pending}개", fontWeight = FontWeight.SemiBold)
+            SecondaryAction(if (isSyncing) "동기화 중…" else "다시 동기화", onRetrySync, !isSyncing)
+            syncMessage?.let { Hint(it) }
+        }
+        sessions.groupBy { formatDate(it.createdAt, "M월 d일 EEEE") }.forEach { (date, rows) ->
+            Text(date, style = MaterialTheme.typography.titleMedium)
+            rows.forEach { session ->
+                Panel(Modifier.clickable { selectedId = session.id }) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(session.wristSide?.let(::wristLabel) ?: "손목 펴기 시도", fontWeight = FontWeight.SemiBold)
+                        Text("›", color = Muted)
+                    }
+                    Hint("${formatDate(session.createdAt, "HH:mm")} · ${formatTime(session.durationSeconds)}")
+                    if (session.completedAttempts != null) LabelValue("진행한 안내", "${session.completedAttempts} / ${session.plannedAttempts}회")
+                    if (session.pain != null || session.fatigue != null) {
+                        session.pain?.let { Hint("통증 · $it") }
+                        session.fatigue?.let { Hint("피로 · $it") }
+                    } else session.comfort?.let { Text("운동 후 · $it") }
+                    Hint(when (session.dataMode) { "demo" -> "데모 기록"; "sensor" -> "센서 측정 기록"; else -> "이전 기록 · 측정 환경 미확인" })
                 }
             }
         }
-
-        OutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("돌아가기")
-        }
     }
 }
 
 @Composable
-private fun SessionHistoryCard(
-    session: RehabSessionEntity
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = session.exerciseName,
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Text(
-                text = formatDateTime(session.createdAt),
-                style = MaterialTheme.typography.bodySmall
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                MetricText(
-                    label = "RMS",
-                    value = "%.4f".format(session.rms)
-                )
-                MetricText(
-                    label = "MAV",
-                    value = "%.4f".format(session.mav)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                MetricText(
-                    label = "Peak",
-                    value = "%.4f".format(session.peakActivation)
-                )
-                MetricText(
-                    label = "시간",
-                    value = formatDuration(session.durationSeconds)
-                )
-            }
-
-            Text(
-                text = when (session.syncStatus) {
-                    SyncStatus.SYNCED -> "클라우드 동기화 완료"
-                    SyncStatus.FAILED -> "동기화 재시도 필요"
-                    SyncStatus.SYNCING -> "클라우드 동기화 중…"
-                    SyncStatus.LOCAL_ONLY -> "로컬 저장됨"
-                },
-                style = MaterialTheme.typography.bodySmall
-            )
+fun HistoryDetailScreen(session: RehabSessionEntity, onBack: () -> Unit) {
+    var details by remember { mutableStateOf(false) }
+    Page("운동 상세", onBack, footer = { SecondaryAction("기록으로 돌아가기", onBack) }) {
+        Hint(formatDate(session.createdAt, "yyyy년 M월 d일 · HH:mm"))
+        if (session.dataMode == "demo") DemoNotice()
+        Panel {
+            Text(session.wristSide?.let(::wristLabel) ?: "손목 펴기 시도", style = MaterialTheme.typography.titleLarge)
+            LabelValue("진행 시간", formatTime(session.durationSeconds))
+            session.completedAttempts?.let { LabelValue("진행한 안내", "$it / ${session.plannedAttempts}회") }
+            session.attemptSeconds?.let { LabelValue("시도 / 휴식", "${it}초 / ${session.restSeconds}초") }
+            if (session.pain != null || session.fatigue != null) {
+                LabelValue("통증", session.pain ?: "입력하지 않음")
+                LabelValue("피로", session.fatigue ?: "입력하지 않음")
+            } else LabelValue("운동 후 상태", session.comfort ?: "입력하지 않음")
+            if (session.endedEarly == true) Hint("중간에 마쳤어요.")
         }
+        TextButton({ details = !details }) { Text(if (details) "측정 상세 접기 −" else "측정 상세 보기 +") }
+        if (details) SignalDetails(session.rms, session.mav, session.peakActivation, session.sampleCount, session.dataMode)
     }
 }
-
-@Composable
-private fun MetricText(
-    label: String,
-    value: String
-) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-
-private fun formatDateTime(timestamp: Long): String {
-    val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")
-    return Instant
-        .ofEpochMilli(timestamp)
-        .atZone(ZoneId.systemDefault())
-        .format(formatter)
-}
-
-private fun formatDuration(totalSeconds: Long): String {
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%02d:%02d".format(minutes, seconds)
-}
-

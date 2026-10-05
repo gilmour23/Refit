@@ -1,204 +1,45 @@
-# Re:Fit V0.4.1 Foundation
+# Re:Fit 0.5.3
 
-MOONG TechThon용 Re:Fit Android MVP입니다.
+뇌졸중 후 손목을 펴려는 시도를 화면과 음성으로 안내하고 운동 기록을 남기는 Kotlin/Jetpack Compose Android 개발 프로젝트입니다.
 
-현재 브랜치의 목표는 단순 UI 데모가 아니라 다음 흐름이 실제로 연결되는 앱 기반을 만드는 것입니다.
+## 현재 상태
 
-```text
-로그인
-  ↓
-사용자 ID
-  ↓
-재활 세션
-  ↓
-EMG 실시간 처리
-  ↓
-Room 로컬 저장
-  ↓
-Supabase 요약 기록 동기화
+- 홈 → 좌우·자세·착용 준비 → 준비 3초 → 시도·휴식 → 운동 후 상태 → 기록.
+- 일시정지·중간 종료·백그라운드 전환과 한국어 음성 상태를 처리합니다.
+- 기본 소스는 **모의 EMG**입니다. BLE 기반은 있지만 실제 센서 설정·실물 검증은 없습니다.
+- 안내 구간 완료를 실제 움직임이나 회복률로 해석하지 않습니다. 시도 4초·휴식 6초·3회는 데모 설정입니다.
+- Room v4가 계정별 기록을 저장하고 v1→v2→v3→v4 마이그레이션을 제공합니다.
+- Supabase에는 기존 신호 요약만 업로드합니다. 좌우·통증·피로·새 안내 메타데이터는 기기 로컬에만 저장합니다. 다른 기기의 기록을 내려받는 기능은 없습니다.
+
+## 개발 시작
+
+[PC 설정과 개발 순서](docs/DEVELOPMENT.md)를 따라갑니다. 별도 Gradle 설치 없이 저장소의 Wrapper를 사용합니다.
+
+```powershell
+# Windows PowerShell, 프로젝트 루트, JDK 17
+.\gradlew.bat --version
+.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:lintDebug -Pkotlin.incremental=false
 ```
 
-## 현재 구현
+macOS/Linux에서는 `./gradlew`를 사용합니다. SDK 36이 필요하며 최소 실행 기기는 API 26입니다. 계정 실행에는 기존 서버의 URL과 publishable key를 로컬 `local.properties`에 설정합니다.
 
-### 계정 / 사용자
-- Supabase Auth 기반 이메일 로그인 및 회원가입
-- Supabase SDK의 저장 세션을 이용한 로그인 상태 복원 구조
-- 인증된 `userId`를 앱 전체 세션 소유권에 사용
-- 로그아웃
-- 사용자별 재활 기록 분리
+## 작업 기준
 
-### EMG
-- Mock sEMG 데이터 소스
-- BLE sEMG 데이터 소스 기반 구현
-- GATT scan / connect / service discovery / notification 구독
-- 패킷 파서 인터페이스
-- INT16 Little Endian 샘플 파서
-- 최근 샘플 실시간 그래프
-- rolling RMS
-- 세션 RMS
-- MAV
-- bipolar 신호를 고려한 peak magnitude
+코드와 테스트를 브랜치·커밋으로 관리하고 PC에서 실행합니다. 기기 문제는 같은 커밋의 재현 순서와 Logcat으로 확인합니다. APK는 확인된 빌드를 전달하는 데 사용합니다.
 
-### 저장 / 동기화
-- Room DB 기반 offline-first 세션 저장
-- 사용자별 history 조회
-- `LOCAL_ONLY / SYNCING / SYNCED / FAILED` 상태
-- 세션 결과를 Supabase에 요약값으로 upsert하는 동기화 레이어
-- `(user_id, client_local_id)` 기반 중복 업로드 방지
-- 네트워크 오류 시 로컬 세션 유지
+1. PC 테스트·빌드·에뮬레이터 실행.
+2. 센서 규격 확보와 실물 샘플 수신·파싱.
+3. 한 운동의 시작·중단·종료·저장·재실행·기록 조회.
+4. 실기기 사용성과 환자·치료사 피드백 반영.
 
-### Supabase 보안
-- `profiles`, `rehab_sessions` 스키마
-- Row Level Security
-- 사용자 본인 데이터만 읽기/쓰기 가능
-- Android에는 publishable key만 사용
-- raw EMG를 DB row 단위로 업로드하지 않음
-- Supabase 기본 테이블 권한을 회수하고 authenticated에 필요한 CRUD만 부여
+[기기 검증 양식](docs/DEVICE_TEST.md)에 실행한 결과만 기록합니다.
 
-## Supabase 설정
+## 검증 기록
 
-프로젝트 루트의 `local.properties`에 아래 값을 추가합니다.
+- [0.5.3 환자 흐름·66개 테스트](docs/verification/2026-10-05-patient-flow-053.md)
+- [개발 환경 구성 검증](docs/verification/2026-10-05-development-baseline.md)
+- [깨끗한 소스·앱 시작 경로 재점검](docs/verification/2026-10-06-execution-readiness-recheck.md)
+- [보안 재점검](docs/verification/2026-10-05-security-recheck.md)
+- [배포된 서버 스키마·소유권 정책](docs/verification/2026-10-03-supabase-deployment.md)
 
-```properties
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
-```
-
-`local.properties`는 Git에 포함되지 않습니다.
-
-Supabase SQL Editor에서 다음 파일을 실행합니다.
-
-```text
-supabase/schema.sql
-```
-
-2026-10-03에 서울 리전 ReFit 프로젝트에 스키마와 계정별 접근 정책을 배포했습니다.
-서버 검증과 실기기에서 남은 확인 항목은
-[`docs/verification/2026-10-03-supabase-deployment.md`](docs/verification/2026-10-03-supabase-deployment.md)에 기록했습니다.
-이 프로젝트는 이메일 회원가입 시 확인 메일 인증이 필요합니다.
-
-## BLE 센서 연결
-
-BLE 기반 구현은 들어가 있지만 실제 센서마다 다음 정보가 다르므로 임의 값을 코드에 넣지 않았습니다.
-
-- BLE Service UUID
-- Notify Characteristic UUID
-- Device name/prefix
-- packet byte layout
-- signed/unsigned 여부
-- sampling frequency
-- ADC → voltage/EMG 단위 변환식
-
-현재 `SessionViewModel`의 기본 데이터 소스는 안전한 개발용 `MockEmgDataSource`입니다.
-
-실제 센서 사양이 확정되면:
-
-```text
-BleEmgConfig
-+ EmgPacketParser
-+ BleEmgDataSource
-```
-
-를 구성해 동일한 `EmgDataSource` 인터페이스로 교체합니다.
-
-INT16 Little Endian raw samples를 전송하는 센서라면 `Int16LittleEndianEmgPacketParser`를 바로 사용할 수 있습니다.
-
-## Room 데이터
-
-세션마다 주요 값은 다음과 같습니다.
-
-- local ID
-- cloud remote ID
-- clientLocalId
-- userId
-- 생성 시각
-- 운동 종류
-- 운동 시간
-- 샘플 수
-- RMS
-- MAV
-- peak activation
-- sync 상태
-- 수정 시각
-
-Room schema version은 2이며, V0.3 schema version 1에서의 migration이 포함되어 있습니다.
-
-## 데이터 정책
-
-실시간 raw EMG는 운동 중 메모리에서 처리합니다.
-
-V0.4에서는 Supabase DB에 다음 요약 결과만 저장합니다.
-
-- 운동 시각
-- 운동 종류
-- 운동 시간
-- sample count
-- RMS
-- MAV
-- peak activation
-
-raw EMG 장기 저장이 필요해지면 DB row 단위가 아니라 파일(CSV/binary) + Storage 구조로 확장합니다.
-
-## 실행
-
-1. Android Studio에서 저장소를 Clone 합니다.
-2. JDK 17 이상을 사용합니다.
-3. `local.properties`에 Supabase URL / publishable key를 입력합니다.
-4. Supabase에서 `supabase/schema.sql`을 적용합니다.
-5. Gradle Sync를 수행합니다.
-6. Android 8.0(API 26) 이상 기기 또는 Emulator에서 실행합니다.
-7. 회원가입/로그인을 수행합니다.
-8. 개발 단계에서는 Mock EMG로 재활 세션을 실행합니다.
-9. 운동 종료 직후 결과는 Room에 저장되고, Supabase 설정/네트워크가 정상이라면 cloud sync를 시도합니다.
-10. 앱을 다시 실행하면 Supabase Auth session state에 따라 로그인 상태를 복원합니다.
-
-## 실제 센서 적용 전 남은 외부 입력
-
-코드 자체에서 추측하면 안 되는 값 두 종류가 남아 있습니다.
-
-1. **Supabase 프로젝트**
-   - 실제 project URL
-   - publishable key
-   - `supabase/schema.sql` 적용
-
-2. **실제 sEMG 센서 프로토콜**
-   - Service / Characteristic UUID
-   - sampling rate
-   - packet layout
-   - scale/calibration
-
-이 값이 제공되면 Mock 데이터 소스를 실제 BLE 소스로 전환할 수 있습니다.
-
-## 주의
-
-현재 RMS/MAV/peak 및 세션 간 RMS 비교는 MVP 기능 검증용입니다. 실제 임상적 회복 정도를 판단하려면 전극 위치, 측정 자세, MVC 등 normalization 기준, 전처리 프로토콜을 별도로 고정해야 합니다.
-
-
-## 2차 검증 (2026-10-03)
-
-로그인 상태 복원과 사용자별 로컬 기록 저장을 보완했습니다. 오프라인 로그아웃 시 인증 정보를 제거하고, 로그아웃·계정 변경 시 이전 사용자 상태를 정리합니다. 화면 회전과 일시적인 인증 로딩은 진행 중인 운동 상태를 유지합니다.
-
-- 단위·통합 테스트 17개 통과
-- Debug APK 빌드 성공
-- 상세 검증: [Phase 2 identity verification](docs/verification/2026-10-03-phase2-identity.md)
-- 실제 서버 로그인·기기 검증은 Supabase 프로젝트 설정 후 진행해야 합니다.
-
-## 3차 검증 (2026-10-03)
-
-Room 저장 직후 운동 결과를 표시하고, 요약 기록을 Supabase에 업로드합니다. 실패·응답 유실·앱 종료 후에도 로컬 기록을 유지하며 같은 clientLocalId로 재시도합니다. 현재 로그인 사용자만 업로드할 수 있습니다.
-
-- 앱 재실행·화면 복귀·인증 복원·운동 종료 시 재시도
-- 재활 기록 화면에서 미동기화 기록 직접 재시도
-- 동시 요청·계정 전환·취소·중단된 SYNCING 상태 처리
-- 단위·통합 테스트 33개 통과, Debug APK 빌드 성공
-
-- PostgreSQL CI에서 RLS·중복 방지 SQL 검증
-- 상세 검증 및 실제 서버 연결 후 체크: [Phase 3 sync verification](docs/verification/2026-10-03-phase3-sync.md)
-
-앱을 종료한 동안에는 동기화하지 않습니다. 다른 기기의 클라우드 기록을 내려받는 기능은 이번 범위에 포함하지 않습니다.
-
-## V0.4.1 보안 수정
-
-로그아웃을 누르면 이전 계정 화면과 운동·동기화 상태를 즉시 폐기하고, HTTP 응답을 기다리기 전에 로컬 인증 정보를 삭제합니다. 서버에는 메모리에 보관한 이전 토큰으로 현재 세션 해지를 요청하며, 응답이 없으면 10초 안에 대기를 종료합니다. 지연된 SDK 복원 이벤트로 이전 계정 화면을 다시 열지 않고, 별도 인증 화면에서 시작한 새 로그인도 이전 로그아웃 정리 후 처리합니다.
-
-전체 단위·통합 테스트 38개 통과, Supabase 연결 설정이 포함된 Debug APK 빌드 성공. 상세 검증과 설치 유의사항은 [로그아웃 수정 검증](docs/verification/2026-10-04-logout-fix.md)에 기록했습니다.
+실제 휴대폰·센서·한국어 음성 출력 검증은 남아 있습니다. 환자 화면에서 임상적 회복 판단을 제공하지 않습니다.

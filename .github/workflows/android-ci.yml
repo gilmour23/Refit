@@ -3,10 +3,17 @@ name: Android CI
 on:
   push:
     branches:
-      - feature/refit-v1-foundation
+      - main
+      - 'feature/**'
+      - 'chore/**'
   pull_request:
     branches:
       - main
+      - feature/refit-v1-foundation
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -15,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -27,34 +34,35 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Gradle 8.13
+      - name: Set up Gradle cache and validate wrapper
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.13"
 
-      - name: Unit tests
+      - name: Set up Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
+
+      - name: Unit tests, lint, and debug build
         run: |
           # Keep tests independent of whether a developer has configured the app.
           # SDK integration tests isolate HTTP rather than using a live project.
           printf 'SUPABASE_URL=https://test.supabase.co\nSUPABASE_PUBLISHABLE_KEY=public-test-key\n' > local.properties
-          gradle :app:testDebugUnitTest --stacktrace
-
-      - name: Assemble debug APK
-        run: |
-          rm local.properties
-          gradle :app:assembleDebug --stacktrace
+          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug -Pkotlin.incremental=false --stacktrace
 
       - name: Upload unit test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: refit-unit-test-reports
-          path: app/build/reports/tests/testDebugUnitTest
+          path: |
+            app/build/reports/tests/testDebugUnitTest
+            app/build/reports/lint-results-debug.*
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: refit-debug-apk
+          name: refit-debug-build-check
           path: app/build/outputs/apk/debug/app-debug.apk
 
   database-security:

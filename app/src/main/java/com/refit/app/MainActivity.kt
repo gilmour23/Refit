@@ -31,6 +31,9 @@ import com.refit.app.ui.home.HomeScreen
 import com.refit.app.ui.session.SessionScreen
 import com.refit.app.ui.session.SessionViewModel
 import com.refit.app.ui.session.SessionViewModelFactory
+import com.refit.app.ui.session.GuideSettingsScreen
+import com.refit.app.ui.components.ReFitTheme
+import androidx.activity.compose.BackHandler
 
 private enum class AppPage {
     HOME,
@@ -43,7 +46,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MaterialTheme {
+            ReFitTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ReFitRoot()
                 }
@@ -122,14 +125,28 @@ private fun AuthenticatedApp(
     )
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
 
+    var showGuideSettings by rememberSaveable(auth.userId) { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { sessionViewModel.setPaused(true) }
+    BackHandler(enabled = page == AppPage.HISTORY) { pageName = AppPage.HOME.name }
+
     LifecycleEventEffect(Lifecycle.Event.ON_START) {
         sessionViewModel.retrySync()
+    }
+    if (showGuideSettings) {
+        GuideSettingsScreen(sessionState.guideTiming, { showGuideSettings = false }, { a, r, n ->
+            if (sessionViewModel.configureGuidance(a, r, n)) showGuideSettings = false
+        })
+        return
     }
 
     when (page) {
         AppPage.HOME -> {
             HomeScreen(
                 email = auth.email,
+                sessions = sessionState.history,
+                wristSide = sessionState.wristSide,
+                guideDescription = sessionState.guideTiming.description,
+                onConfigure = { showGuideSettings = true },
                 sessionRefreshPending = auth.sessionRefreshPending,
                 onStartExercise = {
                     pageName = AppPage.SESSION.name

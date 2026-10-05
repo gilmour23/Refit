@@ -21,3 +21,4 @@ class RealtimeEmgWindow(
         values.clear()
     }
 }
+

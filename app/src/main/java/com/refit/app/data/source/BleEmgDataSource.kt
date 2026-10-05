@@ -94,25 +94,29 @@ class BleEmgDataSource(
         samples.asSharedFlow()
 
     private fun startScan() {
-        val bleScanner = scanner
-            ?: return failConnection("BLE scanner is not available.")
+        try {
+            val bleScanner = scanner
+                ?: return failConnection("BLE scanner is not available.")
 
-        _connectionState.value = EmgConnectionState.Scanning
+            _connectionState.value = EmgConnectionState.Scanning
 
-        val filter = ScanFilter.Builder()
-            .setServiceUuid(ParcelUuid(config.serviceUuid))
-            .build()
+            val filter = ScanFilter.Builder()
+                .setServiceUuid(ParcelUuid(config.serviceUuid))
+                .build()
 
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .build()
+            val settings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build()
 
-        scanning = true
-        bleScanner.startScan(
-            listOf(filter),
-            settings,
-            scanCallback
-        )
+            scanning = true
+            bleScanner.startScan(
+                listOf(filter),
+                settings,
+                scanCallback
+            )
+        } catch (_: SecurityException) {
+            failConnection("Bluetooth scan permission was revoked.")
+        }
     }
 
     private fun stopScan() {
@@ -131,26 +135,30 @@ class BleEmgDataSource(
             callbackType: Int,
             result: ScanResult
         ) {
-            val device = result.device
-            val advertisedName = result.scanRecord?.deviceName
-            val name = advertisedName ?: runCatching { device.name }.getOrNull()
+            try {
+                val device = result.device
+                val advertisedName = result.scanRecord?.deviceName
+                val name = advertisedName ?: runCatching { device.name }.getOrNull()
 
-            val prefix = config.deviceNamePrefix
-            if (prefix != null && name?.startsWith(prefix) != true) {
-                return
+                val prefix = config.deviceNamePrefix
+                if (prefix != null && name?.startsWith(prefix) != true) {
+                    return
+                }
+
+                stopScan()
+                selectedDeviceName = name
+                _connectionState.value =
+                    EmgConnectionState.Connecting(name)
+
+                gatt = device.connectGatt(
+                    appContext,
+                    false,
+                    gattCallback,
+                    BluetoothDevice.TRANSPORT_LE
+                )
+            } catch (_: SecurityException) {
+                failConnection("Bluetooth connection permission was revoked.")
             }
-
-            stopScan()
-            selectedDeviceName = name
-            _connectionState.value =
-                EmgConnectionState.Connecting(name)
-
-            gatt = device.connectGatt(
-                appContext,
-                false,
-                gattCallback,
-                BluetoothDevice.TRANSPORT_LE
-            )
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -172,8 +180,12 @@ class BleEmgDataSource(
 
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    if (!gatt.discoverServices()) {
-                        failConnection("Could not start GATT service discovery.")
+                    try {
+                        if (!gatt.discoverServices()) {
+                            failConnection("Could not start GATT service discovery.")
+                        }
+                    } catch (_: SecurityException) {
+                        failConnection("Bluetooth connection permission was revoked.")
                     }
                 }
 
@@ -249,39 +261,43 @@ class BleEmgDataSource(
         gatt: BluetoothGatt,
         characteristic: BluetoothGattCharacteristic
     ) {
-        if (!gatt.setCharacteristicNotification(characteristic, true)) {
-            failConnection("Could not enable characteristic notifications.")
-            return
-        }
-
-        val descriptor = characteristic.getDescriptor(CLIENT_CONFIG_UUID)
-            ?: return failConnection(
-                "EMG characteristic has no client configuration descriptor."
-            )
-
-        val supportsIndicate =
-            characteristic.properties and
-                BluetoothGattCharacteristic.PROPERTY_INDICATE != 0
-
-        val value = if (supportsIndicate) {
-            BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
-        } else {
-            BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val result = gatt.writeDescriptor(descriptor, value)
-            if (result != BluetoothStatusCodes.SUCCESS) {
-                failConnection("Could not write notification descriptor.")
+        try {
+            if (!gatt.setCharacteristicNotification(characteristic, true)) {
+                failConnection("Could not enable characteristic notifications.")
+                return
             }
-        } else {
-            @Suppress("DEPRECATION")
-            descriptor.value = value
 
-            @Suppress("DEPRECATION")
-            if (!gatt.writeDescriptor(descriptor)) {
-                failConnection("Could not write notification descriptor.")
+            val descriptor = characteristic.getDescriptor(CLIENT_CONFIG_UUID)
+                ?: return failConnection(
+                    "EMG characteristic has no client configuration descriptor."
+                )
+
+            val supportsIndicate =
+                characteristic.properties and
+                    BluetoothGattCharacteristic.PROPERTY_INDICATE != 0
+
+            val value = if (supportsIndicate) {
+                BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+            } else {
+                BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
             }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val result = gatt.writeDescriptor(descriptor, value)
+                if (result != BluetoothStatusCodes.SUCCESS) {
+                    failConnection("Could not write notification descriptor.")
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                descriptor.value = value
+
+                @Suppress("DEPRECATION")
+                if (!gatt.writeDescriptor(descriptor)) {
+                    failConnection("Could not write notification descriptor.")
+                }
+            }
+        } catch (_: SecurityException) {
+            failConnection("Bluetooth connection permission was revoked.")
         }
     }
 
@@ -323,7 +339,7 @@ class BleEmgDataSource(
                     current.disconnect()
                 }
             }
-            current.close()
+            runCatching { current.close() }
         }
         gatt = null
     }
@@ -363,3 +379,4 @@ class BleEmgDataSource(
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 }
+

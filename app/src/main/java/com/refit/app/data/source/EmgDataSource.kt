@@ -11,3 +11,4 @@ interface EmgDataSource {
     suspend fun disconnect()
     fun observeEmg(): Flow<EmgSample>
 }
+
