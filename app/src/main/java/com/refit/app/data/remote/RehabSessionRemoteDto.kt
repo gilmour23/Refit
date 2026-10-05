@@ -29,3 +29,4 @@ data class RehabSessionUpsertDto(
 data class RemoteSessionId(
     val id: String
 )
+

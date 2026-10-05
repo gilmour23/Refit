@@ -55,7 +55,8 @@ class SessionSyncUiTest {
     }
 
     @Test(timeout = 30000) fun resultIsVisibleWhileUploadWaitsAndManualRetryRecoversFailure() = runBlocking {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val scheduler = TestCoroutineScheduler()
+        Dispatchers.setMain(UnconfinedTestDispatcher(scheduler))
         val db = Room.inMemoryDatabaseBuilder(application, ReFitDatabase::class.java).build()
         val repository = RehabSessionRepository(db.rehabSessionDao())
         val started = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
@@ -72,7 +73,7 @@ class SessionSyncUiTest {
                 syncCoordinator = SessionSyncCoordinator(repository, RehabSessionRemoteDataSource(c)))
             store.put("session", vm)
             withTimeout(5000) { vm.uiState.first { !it.isSyncing } }
-            vm.startSession(); source.samples.emit(EmgSample(1, -4f)); source.samples.emit(EmgSample(2, 2f))
+            vm.configureWristSide("left"); vm.startSession(); scheduler.advanceTimeBy(3000); scheduler.runCurrent(); source.samples.emit(EmgSample(1, -4f)); source.samples.emit(EmgSample(2, 2f))
             vm.stopSession()
             withTimeout(5000) { started.await() }
             val result = vm.uiState.value.result!!
@@ -92,7 +93,8 @@ class SessionSyncUiTest {
     }
 
     @Test(timeout = 30000) fun retryCallsCoalesceAndLogoutCancelsPendingUpload() = runBlocking {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val scheduler = TestCoroutineScheduler()
+        Dispatchers.setMain(UnconfinedTestDispatcher(scheduler))
         val db = Room.inMemoryDatabaseBuilder(application, ReFitDatabase::class.java).build()
         val repository = RehabSessionRepository(db.rehabSessionDao())
         val id = repository.insert(RehabSessionEntity(userId = owner, createdAt = 1, exerciseName = "wrist",
@@ -117,7 +119,8 @@ class SessionSyncUiTest {
     }
 
     @Test(timeout = 30000) fun completedSessionDuringPreviousUploadIsQueued() = runBlocking {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val scheduler = TestCoroutineScheduler()
+        Dispatchers.setMain(UnconfinedTestDispatcher(scheduler))
         val db = Room.inMemoryDatabaseBuilder(application, ReFitDatabase::class.java).build()
         val repository = RehabSessionRepository(db.rehabSessionDao())
         repository.insert(RehabSessionEntity(userId = owner, createdAt = 1, exerciseName = "previous",
@@ -135,7 +138,7 @@ class SessionSyncUiTest {
                 syncCoordinator = SessionSyncCoordinator(repository, RehabSessionRemoteDataSource(c)))
             store.put("session", vm)
             withTimeout(5000) { started.await() }
-            vm.startSession(); source.samples.emit(EmgSample(1, 2f)); vm.stopSession()
+            vm.configureWristSide("left"); vm.startSession(); scheduler.advanceTimeBy(3000); scheduler.runCurrent(); source.samples.emit(EmgSample(1, 2f)); vm.stopSession()
             withTimeout(5000) { vm.uiState.first { it.result != null } }
             assertEquals(2, repository.observeAll(owner).first().size)
             release.complete(Unit)
@@ -146,7 +149,8 @@ class SessionSyncUiTest {
 
     @OptIn(SupabaseInternal::class)
     @Test(timeout = 30000) fun sameOwnerAuthRestorationRetriesAfterForegroundInitializingState() = runBlocking {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val scheduler = TestCoroutineScheduler()
+        Dispatchers.setMain(UnconfinedTestDispatcher(scheduler))
         val db = Room.inMemoryDatabaseBuilder(application, ReFitDatabase::class.java).build()
         val repository = RehabSessionRepository(db.rehabSessionDao())
         val id = repository.insert(RehabSessionEntity(userId = owner, createdAt = 1, exerciseName = "wrist",
@@ -174,7 +178,8 @@ class SessionSyncUiTest {
 
     @OptIn(SupabaseInternal::class)
     @Test(timeout = 30000) fun authReadyDuringFinalPendingReadIsNotLost() = runBlocking {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val scheduler = TestCoroutineScheduler()
+        Dispatchers.setMain(UnconfinedTestDispatcher(scheduler))
         val db = Room.inMemoryDatabaseBuilder(application, ReFitDatabase::class.java).build()
         val actual = db.rehabSessionDao()
         actual.insert(RehabSessionEntity(userId = owner, createdAt = 1, exerciseName = "wrist",
@@ -214,8 +219,8 @@ class SessionSyncUiTest {
 
     private class Source : EmgDataSource {
         override val connectionState = MutableStateFlow<EmgConnectionState>(EmgConnectionState.Disconnected)
-        val samples = MutableSharedFlow<EmgSample>()
-        override suspend fun connect() { }
+        val samples = MutableSharedFlow<EmgSample>(replay = 1)
+        override suspend fun connect() { connectionState.value = EmgConnectionState.Connected("test"); samples.tryEmit(EmgSample(0, 0f)) }
         override suspend fun disconnect() { }
         override fun observeEmg() = samples
     }

@@ -35,3 +35,4 @@ object EmgSignalProcessor {
         return rms(samples.takeLast(windowSize))
     }
 }
+

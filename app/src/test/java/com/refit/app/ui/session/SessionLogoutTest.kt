@@ -41,7 +41,7 @@ class SessionLogoutTest {
             val vm = SessionViewModel(application, "owner-a", source,
                 repository = repository, syncCoordinator = coordinator)
             store.put("session", vm)
-            vm.startSession()
+            vm.configureWristSide("left"); vm.startSession()
             assertTrue(source.connected)
             store.clear()
             assertFalse(source.connected)

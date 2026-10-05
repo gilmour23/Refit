@@ -29,5 +29,15 @@ data class RehabSessionEntity(
     @ColumnInfo(name = "maxActivation")
     val peakActivation: Float,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
-    val updatedAt: Long = createdAt
+    val updatedAt: Long = createdAt,
+    val completedAttempts: Int? = null,
+    val plannedAttempts: Int? = null,
+    val attemptSeconds: Int? = null,
+    val restSeconds: Int? = null,
+    val endedEarly: Boolean? = null,
+    @ColumnInfo(defaultValue = "'unknown'") val dataMode: String = "unknown",
+    val comfort: String? = null,
+    val wristSide: String? = null,
+    val pain: String? = null,
+    val fatigue: String? = null
 )

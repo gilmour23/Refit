@@ -28,8 +28,8 @@ android {
         applicationId = "com.refit.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.4.1"
+        versionCode = 9
+        versionName = "0.5.3"
 
         buildConfigField(
             "String",
@@ -41,6 +41,18 @@ android {
             "SUPABASE_PUBLISHABLE_KEY",
             "\"${localProperty("SUPABASE_PUBLISHABLE_KEY")}\""
         )
+    }
+
+    buildTypes {
+        create("qa") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            isJniDebuggable = false
+            // Preserve the existing installation and its local records during QA updates.
+            // A production distribution must use a separate managed release signing key.
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {
@@ -93,6 +105,10 @@ dependencies {
     implementation("io.ktor:ktor-client-android:3.5.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.76.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.76.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("io.ktor:ktor-client-mock:3.5.1")

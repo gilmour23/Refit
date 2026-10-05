@@ -1,6 +1,8 @@
 package com.refit.app.ui.session
 
 import android.app.Application
+import android.os.SystemClock
+import com.refit.app.data.source.EmgConnectionState
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.refit.app.data.local.ReFitDatabase
@@ -14,6 +16,7 @@ import com.refit.app.data.source.MockEmgDataSource
 import com.refit.app.signal.EmgSignalProcessor
 import com.refit.app.signal.RealtimeEmgWindow
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.update
@@ -29,6 +32,17 @@ import kotlinx.coroutines.launch
 data class SessionUiState(
     val connected: Boolean = false,
     val running: Boolean = false,
+    val isConnecting: Boolean = false,
+    val paused: Boolean = false,
+    val dataMode: String = "demo",
+    val guideTiming: GuideTiming = GuideTiming(),
+    val completedAttempts: Int = 0,
+    val phase: GuidePhase = GuidePhase.READY,
+    val wristSide: String? = null,
+    val voiceEnabled: Boolean = true,
+    val signalStatus: SignalStatus = SignalStatus.WAITING,
+    val restHeld: Boolean = false,
+    val phaseSecondsRemaining: Int = 3,
     val samples: List<Float> = emptyList(),
     val currentActivation: Float = 0f,
     val elapsedSeconds: Long = 0L,
@@ -53,22 +67,46 @@ class SessionViewModel(
 ) : AndroidViewModel(application) {
     private val realtimeWindow = RealtimeEmgWindow(realtimeWindowSize)
 
-    private val _uiState = MutableStateFlow(SessionUiState())
+    private val preferences = application.getSharedPreferences("guide-$userId", android.content.Context.MODE_PRIVATE)
+    private val initialTiming = runCatching { GuideTiming(preferences.getInt("attempt", 4),
+        preferences.getInt("rest", 6), preferences.getInt("count", 3)) }.getOrDefault(GuideTiming())
+    private val dataMode = if (dataSource is MockEmgDataSource) "demo" else "sensor"
+    private val _uiState = MutableStateFlow(SessionUiState(guideTiming = initialTiming,
+        phaseSecondsRemaining = 3, dataMode = dataMode,
+        wristSide = preferences.getString("side", null)?.takeIf { it in listOf("left", "right") },
+        voiceEnabled = preferences.getBoolean("voice", true)))
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
 
     private var emgJob: Job? = null
     private var timerJob: Job? = null
     private var syncJob: Job? = null
     private var syncRequested = false
+    private var lastSampleAt: Long? = null
+    private var connectedAt = 0L
+    private var sensorWatchJob: Job? = null
 
     private val sessionSamples = mutableListOf<Float>()
 
     init {
+        sensorWatchJob = viewModelScope.launch {
+            var seenConnected = false
+            dataSource.connectionState.collect { connection ->
+                when (connection) {
+                    is EmgConnectionState.Connected -> {
+                        seenConnected = true
+                        if (_uiState.value.running || _uiState.value.isConnecting)
+                            _uiState.update { it.copy(connected = true) }
+                    }
+                    is EmgConnectionState.Disconnected, is EmgConnectionState.Error -> {
+                        if (seenConnected && _uiState.value.running) interruptSignal(disconnected = true)
+                    }
+                    else -> Unit
+                }
+            }
+        }
         viewModelScope.launch {
             repository.observeAll(userId).collect { history ->
-                _uiState.value = _uiState.value.copy(
-                    history = history
-                )
+                _uiState.update { it.copy(history = history) }
             }
         }
 
@@ -112,123 +150,196 @@ class SessionViewModel(
         }
     }
 
-    fun startSession() {
-        if (_uiState.value.running) return
+    fun configureGuidance(attemptSeconds: Int, restSeconds: Int, attempts: Int): Boolean {
+        if (_uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return false
+        val timing = runCatching { GuideTiming(attemptSeconds, restSeconds, attempts) }.getOrNull() ?: return false
+        preferences.edit().putInt("attempt", attemptSeconds).putInt("rest", restSeconds).putInt("count", attempts).apply()
+        _uiState.update { it.copy(guideTiming = timing, phaseSecondsRemaining = timing.attemptSeconds) }
+        return true
+    }
 
+    fun configureWristSide(side: String): Boolean {
+        if (side !in listOf("left", "right") || _uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return false
+        preferences.edit().putString("side", side).apply()
+        _uiState.update { it.copy(wristSide = side) }
+        return true
+    }
+
+    fun setVoiceEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean("voice", enabled).apply()
+        _uiState.update { it.copy(voiceEnabled = enabled) }
+    }
+
+    fun startSession() {
+        if (_uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return
+        if (_uiState.value.wristSide == null) {
+            _uiState.update { it.copy(message = "운동할 손목을 선택하세요.") }
+            return
+        }
         sessionSamples.clear()
         realtimeWindow.clear()
+        _uiState.update { it.copy(isConnecting = true, result = null, message = null, paused = false,
+            signalStatus = if (dataMode == "demo") SignalStatus.DEMO else SignalStatus.WAITING, restHeld = false) }
+        connectAndCollect(newSession = true)
+    }
 
+    fun retryConnection() {
+        if (!_uiState.value.running || _uiState.value.isConnecting) return
+        _uiState.update { it.copy(isConnecting = true, paused = true, message = null) }
+        emgJob?.cancel()
+        connectAndCollect(newSession = false)
+    }
+
+    private fun connectAndCollect(newSession: Boolean) {
         emgJob = viewModelScope.launch {
-            runCatching {
+            try {
+                if (!newSession) dataSource.disconnect()
                 dataSource.connect()
-            }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(
-                    connected = false,
-                    running = false,
-                    message = error.message ?: "센서 연결에 실패했습니다."
-                )
-                return@launch
-            }
-
-            _uiState.value = _uiState.value.copy(
-                connected = true,
-                running = true,
-                samples = emptyList(),
-                currentActivation = 0f,
-                elapsedSeconds = 0L,
-                result = null,
-                showHistory = false,
-                isSaving = false,
-                message = null
-            )
-
-            dataSource.observeEmg().collect { sample ->
-                sessionSamples += sample.value
-
-                val visibleSamples =
-                    (_uiState.value.samples + sample.value).takeLast(200)
-
-                _uiState.value = _uiState.value.copy(
-                    samples = visibleSamples,
-                    currentActivation = realtimeWindow.add(sample.value)
-                )
-            }
-        }
-
-        timerJob = viewModelScope.launch {
-            while (true) {
-                delay(1000)
-                if (_uiState.value.running) {
-                    _uiState.value = _uiState.value.copy(
-                        elapsedSeconds = _uiState.value.elapsedSeconds + 1
-                    )
+                connectedAt = SystemClock.elapsedRealtime()
+                lastSampleAt = null
+                _uiState.update {
+                    if (newSession) it.copy(connected = true, isConnecting = false, running = true,
+                        samples = emptyList(), currentActivation = 0f, elapsedSeconds = 0L, completedAttempts = 0,
+                        phase = GuidePhase.READY, phaseSecondsRemaining = 3, showHistory = false)
+                    else it.copy(connected = true, isConnecting = false, signalStatus = SignalStatus.WAITING)
                 }
+                if (newSession) startTimer()
+                dataSource.observeEmg().collect { sample ->
+                    if (!_uiState.value.running || !sample.value.isFinite()) return@collect
+                    if (dataMode != "demo" && (!_uiState.value.connected || dataSource.connectionState.value !is EmgConnectionState.Connected)) return@collect
+                    lastSampleAt = SystemClock.elapsedRealtime()
+                    _uiState.update { it.copy(signalStatus = if (dataMode == "demo") SignalStatus.DEMO else SignalStatus.RECEIVING) }
+                    if (_uiState.value.paused || _uiState.value.phase == GuidePhase.READY) return@collect
+                    sessionSamples += sample.value
+                    _uiState.update { it.copy(samples = (it.samples + sample.value).takeLast(200),
+                        currentActivation = realtimeWindow.add(sample.value)) }
+                }
+                if (_uiState.value.running) interruptSignal(disconnected = true)
+            } catch (_: TimeoutCancellationException) { connectionFailed() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { connectionFailed() }
+        }
+    }
+
+    private fun connectionFailed() {
+        if (_uiState.value.running) interruptSignal(disconnected = true)
+        _uiState.update { it.copy(isConnecting = false, connected = false, message = "연결하지 못했어요. 다시 연결해 주세요.") }
+    }
+
+    private fun hasFreshSignal(state: SessionUiState): Boolean = state.connected &&
+        state.signalStatus == SignalStatus.RECEIVING &&
+        lastSampleAt?.let { SystemClock.elapsedRealtime() - it < 5000 } == true
+
+    private fun startTimer() {
+        timerJob = viewModelScope.launch {
+            while (_uiState.value.running) {
+                delay(1000)
+                val state = _uiState.value
+                if (!state.running) break
+                if (dataMode != "demo" && !state.isConnecting && SystemClock.elapsedRealtime() - (lastSampleAt ?: connectedAt) >= 5000) {
+                    interruptSignal(disconnected = false)
+                }
+                if (_uiState.value.paused) continue
+                if (dataMode != "demo" && !hasFreshSignal(_uiState.value)) continue
+                if (state.phase == GuidePhase.READY) {
+                    val remaining = state.phaseSecondsRemaining - 1
+                    _uiState.update { it.copy(phase = if (remaining <= 0) GuidePhase.ATTEMPT else GuidePhase.READY,
+                        phaseSecondsRemaining = if (remaining <= 0) it.guideTiming.attemptSeconds else remaining) }
+                    continue
+                }
+                val elapsed = state.elapsedSeconds + 1
+                val progress = state.guideTiming.progress(elapsed)
+                _uiState.update { it.copy(elapsedSeconds = elapsed, phase = progress.phase,
+                    completedAttempts = progress.completedAttempts, phaseSecondsRemaining = progress.remainingSeconds) }
+                if (progress.phase == GuidePhase.FINISHED) stopSession()
             }
         }
     }
 
-    fun stopSession() {
-        if (!_uiState.value.running) return
+    private fun interruptSignal(disconnected: Boolean) {
+        _uiState.update { it.copy(paused = true, connected = if (disconnected) false else it.connected,
+            signalStatus = SignalStatus.INTERRUPTED, currentActivation = 0f, samples = emptyList()) }
+    }
 
-        val duration = _uiState.value.elapsedSeconds
+    fun setPaused(paused: Boolean) {
+        val state = _uiState.value
+        if (!state.running && !state.isConnecting) return
+        if (!paused && dataMode != "demo" && !hasFreshSignal(state)) {
+            _uiState.update { it.copy(message = "연결과 신호를 확인한 뒤 이어서 해주세요.") }
+            return
+        }
+        realtimeWindow.clear()
+        _uiState.update { it.copy(paused = paused, restHeld = if (paused) it.restHeld else false,
+            currentActivation = 0f, samples = emptyList(), message = null) }
+    }
+
+    fun extendRest() {
+        if (_uiState.value.running && _uiState.value.phase == GuidePhase.REST) {
+            setPaused(true)
+            _uiState.update { it.copy(restHeld = true) }
+        }
+    }
+
+    fun stopSession() {
+        val state = _uiState.value
+        if (!state.running) return
         val samplesSnapshot = sessionSamples.toList()
         val createdAt = System.currentTimeMillis()
-
         emgJob?.cancel()
         timerJob?.cancel()
-
-        _uiState.value = _uiState.value.copy(
-            connected = false,
-            running = false,
-            isSaving = samplesSnapshot.isNotEmpty()
-        )
-
+        _uiState.update { it.copy(connected = false, running = false, paused = false, isSaving = true) }
         viewModelScope.launch {
             runCatching { dataSource.disconnect() }
-
-            if (samplesSnapshot.isEmpty()) {
-                _uiState.value = _uiState.value.copy(
-                    isSaving = false,
-                    message = "측정된 EMG 데이터가 없어 세션을 저장하지 않았습니다."
-                )
-                return@launch
+            val result = RehabSessionResult(durationSeconds = state.elapsedSeconds, sampleCount = samplesSnapshot.size,
+                rms = EmgSignalProcessor.rms(samplesSnapshot), mav = EmgSignalProcessor.mav(samplesSnapshot),
+                peakActivation = EmgSignalProcessor.peakMagnitude(samplesSnapshot),
+                completedAttempts = state.completedAttempts, plannedAttempts = state.guideTiming.attempts,
+                attemptSeconds = state.guideTiming.attemptSeconds, restSeconds = state.guideTiming.restSeconds,
+                endedEarly = state.elapsedSeconds < state.guideTiming.totalSeconds, dataMode = dataMode, wristSide = state.wristSide)
+            try {
+                val id = repository.insert(RehabSessionEntity(userId = userId, createdAt = createdAt,
+                    exerciseName = if (dataMode == "demo") "손목 폄 시도 · 데모" else "손목 폄 시도",
+                    durationSeconds = result.durationSeconds, sampleCount = result.sampleCount, rms = result.rms,
+                    mav = result.mav, peakActivation = result.peakActivation, syncStatus = SyncStatus.LOCAL_ONLY,
+                    updatedAt = createdAt, completedAttempts = result.completedAttempts, plannedAttempts = result.plannedAttempts,
+                    attemptSeconds = result.attemptSeconds, restSeconds = result.restSeconds, endedEarly = result.endedEarly,
+                    dataMode = dataMode, wristSide = state.wristSide))
+                _uiState.update { it.copy(result = result.copy(savedSessionId = id), isSaving = false) }
+                retrySync()
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) {
+                _uiState.update { it.copy(result = result, isSaving = false, message = "기록을 저장하지 못했습니다.") }
             }
+        }
+    }
 
-            val baseResult = RehabSessionResult(
-                durationSeconds = duration,
-                sampleCount = samplesSnapshot.size,
-                rms = EmgSignalProcessor.rms(samplesSnapshot),
-                mav = EmgSignalProcessor.mav(samplesSnapshot),
-                peakActivation = EmgSignalProcessor.peakMagnitude(samplesSnapshot)
-            )
+    fun recordComfort(comfort: String) {
+        if (comfort !in listOf("괜찮아요", "불편했어요")) return
+        val result = _uiState.value.result ?: return
+        val id = result.savedSessionId ?: return
+        viewModelScope.launch {
+            try {
+                repository.updateComfort(id, userId, comfort)
+                _uiState.update { it.copy(result = it.result?.copy(comfort = comfort)) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { _uiState.update { it.copy(message = "운동 후 상태를 저장하지 못했습니다.") } }
+        }
+    }
 
-            val previous = repository.getLatest(userId)
-
-            val sessionId = repository.insert(
-                RehabSessionEntity(
-                    userId = userId,
-                    createdAt = createdAt,
-                    exerciseName = "손목 폄 운동",
-                    durationSeconds = duration,
-                    sampleCount = samplesSnapshot.size,
-                    rms = baseResult.rms,
-                    mav = baseResult.mav,
-                    peakActivation = baseResult.peakActivation,
-                    syncStatus = SyncStatus.LOCAL_ONLY,
-                    updatedAt = createdAt
-                )
-            )
-
-            _uiState.value = _uiState.value.copy(
-                result = baseResult.copy(
-                    previousRms = previous?.rms,
-                    savedSessionId = sessionId
-                ),
-                isSaving = false,
-                message = null
-            )
-
-            retrySync()
+    fun recordSymptoms(pain: String?, fatigue: String?) {
+        if (pain != null && pain !in listOf("없어요", "있어요")) return
+        if (fatigue != null && fatigue !in listOf("괜찮아요", "피곤해요")) return
+        val id = _uiState.value.result?.savedSessionId ?: return
+        viewModelScope.launch {
+            try {
+                val comfort = if (pain == "있어요") "불편했어요" else "괜찮아요"
+                if (pain != null) repository.updatePain(id, userId, pain, comfort)
+                if (fatigue != null) repository.updateFatigue(id, userId, fatigue)
+                _uiState.update { state -> state.copy(result = state.result?.copy(
+                    pain = pain ?: state.result.pain, fatigue = fatigue ?: state.result.fatigue,
+                    comfort = if (pain != null) comfort else state.result.comfort)) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { _uiState.update { it.copy(message = "운동 후 상태를 저장하지 못했어요.") } }
         }
     }
 
@@ -252,13 +363,18 @@ class SessionViewModel(
         _uiState.value = SessionUiState(
             history = _uiState.value.history,
             isSyncing = _uiState.value.isSyncing,
-            syncMessage = _uiState.value.syncMessage
+            syncMessage = _uiState.value.syncMessage,
+            guideTiming = _uiState.value.guideTiming,
+            phaseSecondsRemaining = 3,
+            wristSide = _uiState.value.wristSide, voiceEnabled = _uiState.value.voiceEnabled,
+            dataMode = dataMode
         )
     }
 
     override fun onCleared() {
         emgJob?.cancel()
         timerJob?.cancel()
+        sensorWatchJob?.cancel()
         sessionSamples.clear()
         realtimeWindow.clear()
         _uiState.value = SessionUiState()
