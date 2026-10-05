@@ -9,11 +9,11 @@ git clone --branch chore/development-baseline https://github.com/gilmour23/Refit
 cd Refit
 ```
 
-- Android Studio: 프로젝트의 AGP 8.11.1을 지원하는 버전.
-- Settings → Build Tools → Gradle: 배포는 Wrapper, Gradle JDK는 **17**. 터미널의 `JAVA_HOME`도 JDK 17로 설정합니다.
-- SDK Manager: Platform 36, Build-Tools 36.0.0, Platform-Tools 설치.
+- Android Studio: 최신 안정 버전은 프로젝트의 AGP 8.11.1을 지원합니다. 프로젝트의 Gradle·AGP 버전은 그대로 사용합니다. [공식 호환표](https://developer.android.com/studio/releases#android_gradle_plugin_and_android_studio_compatibility)를 참고합니다.
+- File → Settings → Build, Execution, Deployment → Build Tools → Gradle: 배포는 Wrapper, Gradle JDK는 **17**. 없다면 Download JDK에서 17을 설치합니다. 터미널에서 Wrapper를 실행할 때는 `JAVA_HOME`도 JDK 17을 가리켜야 합니다.
+- SDK Manager: **SDK Platform 36**, **Build-Tools 35.0.0**, Platform-Tools, Android Emulator를 설치합니다. SDK Tools 탭에서 Show Package Details를 켜면 Build-Tools 버전을 선택할 수 있습니다. 이 프로젝트는 `buildToolsVersion`을 지정하지 않아 [AGP 8.11의 기본값 35.0.0](https://developer.android.com/build/releases/agp-8-11-0-release-notes#compatibility)을 사용합니다. Platform 버전과 Build-Tools 버전은 별개입니다.
 - Gradle 8.13은 Wrapper가 받습니다. JAR·배포 ZIP 체크섬은 [공식 목록](https://gradle.org/release-checksums/)과 비교합니다.
-- 첫 실행은 API 35/36 에뮬레이터에서 합니다. 앱의 최소 지원 버전은 API 26입니다.
+- 첫 실행은 Device Manager에서 Pixel 기기와 API 35 시스템 이미지를 선택해 만든 에뮬레이터에서 합니다. API 36도 지원하며 앱의 최소 지원 버전은 API 26입니다.
 
 Android Studio가 생성한 `local.properties`의 `sdk.dir`을 유지하고, 계정 실행에 필요한 기존 서버 값을 추가합니다. `local.properties.example`은 키 이름 확인용입니다.
 
@@ -22,11 +22,15 @@ SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_REPLACE_ME
 ```
 
-실제 로그인에는 유효한 설정이 필요합니다. service_role·secret key를 앱에 넣지 않습니다. 설정 파일은 Git에서 제외됩니다. 기존 서버에 스키마가 배포돼 있으므로 PC 설정을 위해 SQL이나 인증 정책을 다시 변경하지 않습니다.
+예시 값은 기존 ReFit Supabase 프로젝트의 실제 URL·publishable key로 바꿉니다. 프로젝트의 Connect 창에서 확인할 수 있습니다. 설정이 없어도 빌드는 가능하지만 로그인 후 환자 화면에 들어갈 수 없습니다. 이 값은 빌드 시 앱에 들어가므로 변경 후 Sync Project with Gradle Files를 실행하고 다시 빌드·Run합니다.
+
+service_role·secret key를 앱에 넣지 않습니다. 설정 파일은 Git에서 제외됩니다. 기존 서버에 스키마가 배포돼 있으므로 PC 설정을 위해 SQL이나 인증 정책을 다시 변경하지 않습니다.
 
 ## 첫 실행
 
-Windows PowerShell, 프로젝트 루트:
+Android Studio에서 `app`과 에뮬레이터를 선택하고 Run을 누릅니다. 기존 계정으로 로그인한 뒤 홈 → 준비 → 시도·휴식 → 결과 → 기록을 확인합니다. 기본 센서 소스는 계속 Mock입니다.
+
+개발 검증 명령은 아래와 같습니다. Windows PowerShell, 프로젝트 루트:
 
 ```powershell
 .\gradlew.bat --version
@@ -40,7 +44,7 @@ macOS/Linux:
 ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug -Pkotlin.incremental=false
 ```
 
-Gradle 8.13·JDK 17과 BUILD SUCCESSFUL을 확인합니다. Android Studio에서 `app`과 에뮬레이터를 선택하고 Run을 누릅니다. 로그인 후 홈 → 준비 → 시도·휴식 → 결과 → 기록을 확인합니다. 기본 소스는 계속 Mock입니다.
+Gradle 8.13·JDK 17과 BUILD SUCCESSFUL을 확인합니다.
 
 보고서: `app/build/reports/tests/testDebugUnitTest/index.html`, `app/build/reports/lint-results-debug.html`. Debug APK: `app/build/outputs/apk/debug/app-debug.apk`. 실제 Compose 화면 렌더: `app/build/outputs/patient-screens/`.
 
