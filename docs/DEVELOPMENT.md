@@ -9,6 +9,8 @@ git clone --branch chore/development-baseline https://github.com/gilmour23/Refit
 cd Refit
 ```
 
+PC에는 Git이 설치돼 있어야 합니다. Windows에서는 [Git for Windows](https://git-scm.com/install/windows)를 사용합니다. ChatGPT에 연결한 GitHub 인증이 Android Studio나 PC의 Git 로그인으로 이어지지는 않으므로, PC에서도 이 비공개 저장소에 접근 가능한 계정으로 인증합니다. New Project로 별도 앱을 만들지 않고 받은 Refit 폴더를 엽니다.
+
 - Android Studio: 최신 안정 버전은 프로젝트의 AGP 8.11.1을 지원합니다. 프로젝트의 Gradle·AGP 버전은 그대로 사용합니다. [공식 호환표](https://developer.android.com/studio/releases#android_gradle_plugin_and_android_studio_compatibility)를 참고합니다.
 - File → Settings → Build, Execution, Deployment → Build Tools → Gradle: 배포는 Wrapper, Gradle JDK는 **17**. 없다면 Download JDK에서 17을 설치합니다. 터미널에서 Wrapper를 실행할 때는 `JAVA_HOME`도 JDK 17을 가리켜야 합니다.
 - SDK Manager: **SDK Platform 36**, **Build-Tools 35.0.0**, Platform-Tools, Android Emulator를 설치합니다. SDK Tools 탭에서 Show Package Details를 켜면 Build-Tools 버전을 선택할 수 있습니다. 이 프로젝트는 `buildToolsVersion`을 지정하지 않아 [AGP 8.11의 기본값 35.0.0](https://developer.android.com/build/releases/agp-8-11-0-release-notes#compatibility)을 사용합니다. Platform 버전과 Build-Tools 버전은 별개입니다.
@@ -29,6 +31,12 @@ service_role·secret key를 앱에 넣지 않습니다. 설정 파일은 Git에�
 ## 첫 실행
 
 Android Studio에서 `app`과 에뮬레이터를 선택하고 Run을 누릅니다. 기존 계정으로 로그인한 뒤 홈 → 준비 → 시도·휴식 → 결과 → 기록을 확인합니다. 기본 센서 소스는 계속 Mock입니다.
+
+첫 확인에서는 앱 시작·로그인·안내 종료 후 저장·앱 재시작 후 같은 계정의 기록 조회까지 실제로 실행합니다. 서버 설정을 하지 않은 빌드는 로그인 화면까지만 확인할 수 있습니다. 자동 테스트나 각 화면의 렌더링만으로 이 기기 검증을 완료했다고 기록하지 않습니다.
+
+음성 안내는 기기의 TTS 엔진과 한국어 음성 데이터가 필요합니다. 음성이 사용 불가로 표시되면 해당 기기의 텍스트 읽어주기 설정에서 한국어 출력을 확인합니다. 에뮬레이터에서 모의 안내를 확인한 결과를 실제 EMG 센서 수신 결과로 기록하지 않습니다.
+
+화면 디자인만 확인할 때는 서버 설정 없이 `:app:testDebugUnitTest --tests com.refit.app.ui.PatientScreensTest`를 실행해 `app/build/outputs/patient-screens/`의 화면 이미지를 볼 수 있습니다. 이는 화면별 테스트 렌더이며, 로그인부터 저장·재시작까지 앱 전체를 직접 실행한 결과와 구분합니다.
 
 개발 검증 명령은 아래와 같습니다. Windows PowerShell, 프로젝트 루트:
 
@@ -61,6 +69,8 @@ CI는 가짜 URL·공개 테스트 키를 사용한 HTTP 격리 테스트·Lint�
 ## 반복 작업
 
 작업 전 `git status`, `git log -1 --oneline`으로 상태와 커밋을 확인합니다. 문제나 기능마다 브랜치를 만들고 코드·테스트·필요한 문서를 함께 커밋합니다. PR 검토 후 통합합니다.
+
+이 개발 브랜치에서 새 변경을 받을 때는 수정 사항을 먼저 커밋하거나 보관한 뒤 `git pull --ff-only`를 실행하고 Sync → Run합니다. PC에서 코드를 수정했다면 먼저 커밋하고 원격 브랜치에 올려 공유합니다. 설치만으로 ChatGPT가 PC의 Android Studio·에뮬레이터·휴대폰에 접근할 수 있는 것은 아닙니다. 실제 관찰과 정리한 오류·Logcat을 같은 커밋 기준으로 전달합니다.
 
 기기 문제는 커밋·앱 버전·기기·소스·재현 순서를 [기기 검증 양식](DEVICE_TEST.md)에 기록합니다. Android Studio Logcat에서 `package:com.refit.app`으로 앱 로그를 확인합니다. 요청/응답 전체나 인증·원시 EMG 로깅을 켜지 않습니다. 현재 앱에는 별도의 구조화된 센서 진단 로그가 없습니다.
 

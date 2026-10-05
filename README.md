@@ -38,6 +38,7 @@ macOS/Linux에서는 `./gradlew`를 사용합니다. SDK 36이 필요하며 최�
 
 - [0.5.3 환자 흐름·66개 테스트](docs/verification/2026-10-05-patient-flow-053.md)
 - [개발 환경 구성 검증](docs/verification/2026-10-05-development-baseline.md)
+- [깨끗한 소스·앱 시작 경로 재점검](docs/verification/2026-10-06-execution-readiness-recheck.md)
 - [보안 재점검](docs/verification/2026-10-05-security-recheck.md)
 - [배포된 서버 스키마·소유권 정책](docs/verification/2026-10-03-supabase-deployment.md)
 
