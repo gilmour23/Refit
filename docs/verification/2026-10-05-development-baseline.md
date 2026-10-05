@@ -24,3 +24,9 @@ Reproducible setup and repository handoff for the existing 0.5.3 Kotlin/Compose 
 ## Repository handoff
 
 The connected private repository is `gilmour23/Refit`. The observed foundation head is `7c15ad0775b70d3fc18b90e86aea5dc220923adb`. Recent patient-flow commits exist only locally, so the new branch must include the complete 0.5.3 source tree and setup changes. Existing main and foundation branches are preserved.
+
+## Remote verification
+
+- Published a separate private development branch and draft PR #4; all 95 tracked blobs and modes matched the local Git tree. Existing seven branch heads were unchanged.
+- First Actions run passed PostgreSQL ownership checks but failed before Android build: `sdkmanager: command not found` (exit 127). Added an explicit Android SDK setup action instead of relying on runner PATH. Final CI result is recorded after the rerun.
+- Independent review found no Critical or Important source issues. Windows BAT uses canonical CRLF; whitespace-only normalization is deferred. Physical sensor, Windows execution, Korean speech and existing-device updates remain pending.

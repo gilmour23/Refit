@@ -37,8 +37,11 @@ jobs:
       - name: Set up Gradle cache and validate wrapper
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Install Android SDK 36
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Set up Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: false
 
       - name: Unit tests, lint, and debug build
         run: |
