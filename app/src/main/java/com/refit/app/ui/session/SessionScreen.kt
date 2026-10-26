@@ -147,7 +147,9 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(when {
+                    state.signalStatus == SignalStatus.INTERRUPTED -> "연결 확인"
                     state.paused -> "일시정지"
+                    state.dataMode == "sensor" && state.signalStatus == SignalStatus.WAITING -> "신호 대기"
                     state.phase == GuidePhase.READY -> "준비"
                     state.phase == GuidePhase.REST -> "휴식"
                     else -> "시도"
@@ -162,7 +164,7 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
             Column(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(prompt, style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(if (state.phase == GuidePhase.REST || state.paused) CalmSurface else AccentSurface, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     if (maxHeight >= 48.dp) WristIllustration(side, attempt = !state.paused && state.phase == GuidePhase.ATTEMPT,
                         modifier = Modifier.heightIn(max = 210.dp).fillMaxHeight().padding(8.dp))
                 }

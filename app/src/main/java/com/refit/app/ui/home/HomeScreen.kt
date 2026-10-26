@@ -26,7 +26,7 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                 DemoNotice()
             }
             Text("손목 펴기 시도", style = MaterialTheme.typography.headlineMedium)
-            WristIllustration(wristSide, attempt = true, modifier = Modifier.height(140.dp))
+            WristIllustration(wristSide, attempt = true, modifier = Modifier.height(110.dp))
             Text(guideDescription, style = MaterialTheme.typography.bodyMedium, color = Muted)
             PrimaryAction("운동 준비하기", onStartExercise)
         }

@@ -42,6 +42,7 @@ class PatientScreensTest {
     @Test fun preparationRequiresAWristChoiceBeforeShowingTheNextAction() {
         var starts = 0
         compose.setContent { ReFitTheme { SessionContent(SessionUiState(), true, {}, { starts++ }, {}, {}, {}, {}) } }
+        capture("18-wrist-selection")
         compose.onNodeWithText("다음").assertIsNotEnabled()
         compose.onNodeWithText("왼쪽 손목").performClick()
         compose.onNodeWithText("다음").assertIsEnabled().performClick()
@@ -55,6 +56,14 @@ class PatientScreensTest {
         compose.setContent { ReFitTheme { LoginScreen(AuthUiState(), null, { _, _ -> }, { _, _ -> }) } }
         compose.onNodeWithText("로그인", useUnmergedTree = true).assertIsDisplayed()
         capture("01-login")
+    }
+    @Test @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun compactHomeKeepsTheStartActionInTheFirstViewport() {
+        compose.setContent { ReFitTheme {
+            HomeScreen("demo@example.com", sessions = rows, onStartExercise = {}, onOpenHistory = {}, onSignOut = {})
+        } }
+        assertFullyVisible("운동 준비하기")
+        capture("19-compact-home")
     }
     @Test fun homeOpensExercisePreparation() {
         val preparing = mutableStateOf(false)
@@ -107,6 +116,15 @@ class PatientScreensTest {
         compose.onNodeWithText("손목 펴기 시도").performClick()
         compose.onNodeWithText("운동 상세").assertIsDisplayed()
         capture("09-history-detail")
+    }
+    @Test fun historyGroupsMultipleRecordsWithoutHidingTheirEntryPoints() {
+        val sessions = listOf(rows.first().copy(wristSide = "left"),
+            rows.first().copy(id = 2, wristSide = "right", createdAt = rows.first().createdAt - 600_000))
+        compose.setContent { ReFitTheme { HistoryScreen(sessions, {}, false, null, {}) } }
+        compose.onNodeWithText("왼쪽 손목").assertIsDisplayed()
+        capture("20-history-list")
+        compose.onNodeWithText("오른쪽 손목").assertIsDisplayed().performClick()
+        compose.onNodeWithText("운동 상세").assertIsDisplayed()
     }
     @Test fun largerTextStillLeavesPauseAndEndActionsReachable() {
         compose.setContent { ReFitTheme {
@@ -179,3 +197,4 @@ class PatientScreensTest {
         capture("15-ready")
     }
 }
+

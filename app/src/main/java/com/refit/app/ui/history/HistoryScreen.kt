@@ -68,8 +68,11 @@ fun HistoryDetailScreen(session: RehabSessionEntity, onBack: () -> Unit) {
         if (session.dataMode == "demo") DemoNotice()
         Panel {
             Text(session.wristSide?.let(::wristLabel) ?: "손목 펴기 시도", style = MaterialTheme.typography.titleLarge)
-            LabelValue("진행 시간", formatTime(session.durationSeconds))
-            session.completedAttempts?.let { LabelValue("진행한 안내", "$it / ${session.plannedAttempts}회") }
+            HorizontalDivider()
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                SummaryStat("진행 시간", formatTime(session.durationSeconds), Modifier.weight(1f))
+                session.completedAttempts?.let { SummaryStat("진행한 안내", "$it / ${session.plannedAttempts}회", Modifier.weight(1f)) }
+            }
             session.attemptSeconds?.let { LabelValue("시도 / 휴식", "${it}초 / ${session.restSeconds}초") }
             if (session.pain != null || session.fatigue != null) {
                 LabelValue("통증", session.pain ?: "입력하지 않음")
