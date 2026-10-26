@@ -22,24 +22,32 @@ fun WristIllustration(side: String?, attempt: Boolean = false, modifier: Modifie
     }) {
         val w = size.width; val h = size.height
         withTransform({ if (side == "right") scale(-1f, 1f, Offset(w / 2, h / 2)) }) {
-            drawRoundRect(Color(0xFFDDEAE5), Offset(w*.06f,h*.68f), androidx.compose.ui.geometry.Size(w*.51f,h*.2f), CornerRadius(12f))
+            drawRoundRect(Color(0xFFD8E3E0), Offset(w*.06f,h*.68f), androidx.compose.ui.geometry.Size(w*.51f,h*.15f), CornerRadius(10f))
             val arm = Path().apply {
-                moveTo(w*.06f,h*.31f); lineTo(w*.55f,h*.31f)
-                cubicTo(w*.66f,h*.26f,w*.77f,h*.27f,w*.88f,h*.32f)
-                cubicTo(w*.95f,h*.35f,w*.95f,h*.45f,w*.88f,h*.48f)
-                lineTo(w*.72f,h*.48f)
-                cubicTo(w*.69f,h*.57f,w*.65f,h*.61f,w*.62f,h*.54f)
-                lineTo(w*.55f,h*.62f); lineTo(w*.06f,h*.62f); close()
+                moveTo(w*.06f,h*.36f); lineTo(w*.53f,h*.36f)
+                cubicTo(w*.60f,h*.35f,w*.63f,h*.30f,w*.69f,h*.30f)
+                lineTo(w*.89f,h*.33f)
+                cubicTo(w*.95f,h*.34f,w*.96f,h*.41f,w*.90f,h*.43f)
+                lineTo(w*.73f,h*.44f)
+                cubicTo(w*.74f,h*.46f,w*.77f,h*.49f,w*.79f,h*.51f)
+                cubicTo(w*.82f,h*.55f,w*.79f,h*.60f,w*.75f,h*.58f)
+                lineTo(w*.64f,h*.51f)
+                cubicTo(w*.60f,h*.55f,w*.58f,h*.60f,w*.53f,h*.60f)
+                lineTo(w*.06f,h*.60f); close()
             }
-            drawPath(arm, Color(0xFFF5E7DC)); drawPath(arm, Ink.copy(alpha=.55f), style=Stroke(2.5f))
-            drawLine(Ink.copy(alpha=.4f), Offset(w*.56f,h*.32f),Offset(w*.56f,h*.6f),2f)
-            drawLine(Muted.copy(alpha=.4f),Offset(w*.03f,h*.9f),Offset(w*.96f,h*.9f),2f)
+            drawPath(arm, Color(0xFFF1DCCB)); drawPath(arm, Ink.copy(alpha=.6f), style=Stroke(2.5f))
+            drawLine(Ink.copy(alpha=.3f), Offset(w*.55f,h*.38f),Offset(w*.55f,h*.57f),2f)
+            drawLine(Muted.copy(alpha=.3f),Offset(w*.03f,h*.85f),Offset(w*.96f,h*.85f),2f)
             if (attempt) {
-                val x=w*.79f
-                drawLine(Accent,Offset(x,h*.27f),Offset(x,h*.04f),5f)
-                drawLine(Accent,Offset(x,h*.04f),Offset(x-w*.035f,h*.12f),5f)
-                drawLine(Accent,Offset(x,h*.04f),Offset(x+w*.035f,h*.12f),5f)
+                val direction = Path().apply {
+                    moveTo(w*.70f,h*.23f)
+                    quadraticTo(w*.77f,h*.18f,w*.79f,h*.06f)
+                }
+                drawPath(direction, Accent, style=Stroke(4f))
+                drawLine(Accent,Offset(w*.79f,h*.06f),Offset(w*.75f,h*.10f),4f)
+                drawLine(Accent,Offset(w*.79f,h*.06f),Offset(w*.82f,h*.13f),4f)
             }
         }
     }
 }
+

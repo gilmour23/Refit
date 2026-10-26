@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.ui.components.*
 import com.refit.app.ui.session.wristLabel
+import com.refit.app.ui.session.WristIllustration
 
 @Composable
 fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
@@ -16,27 +19,30 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
     var showAccount by remember { mutableStateOf(false) }
     Page("오늘의 운동", topAction = { TextButton({ showAccount = true }) { Text("계정") } },
         footer = { BottomTabs("home", {}, onOpenHistory) }) {
-        DemoNotice()
         if (sessionRefreshPending) Hint("계정 연결을 복구 중입니다. 기록은 이 기기에 저장됩니다.")
-        Panel {
-            Text(wristSide?.let(::wristLabel) ?: "손목 운동", style = MaterialTheme.typography.titleLarge)
-            Text("손목 펴기 시도")
-            HorizontalDivider()
-            Text(guideDescription, fontWeight = FontWeight.SemiBold)
-            TextButton(onConfigure) { Text("안내 설정") }
+        Panel(color = AccentSurface) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(wristSide?.let(::wristLabel) ?: "손목 운동", style = MaterialTheme.typography.bodyMedium, color = Accent)
+                DemoNotice()
+            }
+            Text("손목 펴기 시도", style = MaterialTheme.typography.headlineMedium)
+            WristIllustration(wristSide, attempt = true, modifier = Modifier.height(140.dp))
+            Text(guideDescription, style = MaterialTheme.typography.bodyMedium, color = Muted)
             PrimaryAction("운동 준비하기", onStartExercise)
         }
-        Text("최근 운동", style = MaterialTheme.typography.titleMedium)
+        TextButton(onConfigure, modifier = Modifier.align(Alignment.End)) { Text("안내 설정 ›") }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("최근 운동", style = MaterialTheme.typography.titleMedium)
+            TextButton(onOpenHistory) { Text("전체 보기 ›") }
+        }
         val latest = sessions.firstOrNull()
         Panel {
             if (latest == null) {
                 Text("아직 운동 기록이 없어요", fontWeight = FontWeight.SemiBold)
             } else {
-                Text(formatDate(latest.createdAt), fontWeight = FontWeight.SemiBold)
                 LabelValue(latest.wristSide?.let(::wristLabel) ?: "손목 펴기 시도", formatTime(latest.durationSeconds))
-                latest.pain?.let { Hint("통증 · $it") }
-                latest.fatigue?.let { Hint("피로 · $it") }
-                TextButton(onOpenHistory) { Text("운동 기록 보기 ›") }
+                Hint(formatDate(latest.createdAt))
+                if (latest.pain != null || latest.fatigue != null) Hint(listOfNotNull(latest.pain?.let { "통증 · $it" }, latest.fatigue?.let { "피로 · $it" }).joinToString("  /  "))
             }
         }
     }
@@ -45,3 +51,4 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
         confirmButton = { TextButton(onSignOut) { Text("로그아웃") } },
         dismissButton = { TextButton({ showAccount = false }) { Text("닫기") } })
 }
+
