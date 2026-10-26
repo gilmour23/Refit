@@ -2,6 +2,8 @@ package com.refit.app.ui.session
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -110,11 +112,16 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
                 else -> PrimaryAction(if (state.dataMode == "demo") "데모 안내 시작" else "연결하고 시작", onStart, side != null)
             }
         }) {
-        if (state.dataMode == "demo") DemoNotice()
+        if (state.dataMode == "demo" && preparing) DemoNotice()
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (preparing) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(3) { index ->
+                    Box(Modifier.weight(1f).height(4.dp).background(if (index <= step) Accent else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(2.dp)))
+                }
+            }
             Hint("${step + 1} / 3 · 준비")
-            Panel {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Text(prompt, style = MaterialTheme.typography.headlineMedium)
                 when(step) {
                     0 -> ChoiceRow(listOf("왼쪽 손목", "오른쪽 손목"), side?.let(::wristLabel), {
@@ -122,7 +129,9 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
                         chosenSide = selected; onSide(selected)
                     })
                     1 -> {
-                        WristIllustration(side)
+                        Surface(color = AccentSurface, shape = RoundedCornerShape(16.dp)) {
+                            WristIllustration(side, modifier = Modifier.height(210.dp).padding(12.dp))
+                        }
                         Text("배운 자세대로 팔을 편하게 놓으세요.")
                         TextButton({ step = 0 }) { Text("${wristLabel(side)} · 바꾸기") }
                     }
@@ -136,22 +145,32 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
                 }
             }
         } else {
-            Hint(when {
-                state.dataMode == "demo" -> "센서 없이 체험 중"
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(when {
+                    state.signalStatus == SignalStatus.INTERRUPTED -> "연결 확인"
+                    state.paused -> "일시정지"
+                    state.dataMode == "sensor" && state.signalStatus == SignalStatus.WAITING -> "신호 대기"
+                    state.phase == GuidePhase.READY -> "준비"
+                    state.phase == GuidePhase.REST -> "휴식"
+                    else -> "시도"
+                }, color = if (state.phase == GuidePhase.REST || state.paused) Calm else Accent, style = MaterialTheme.typography.titleMedium)
+                if (state.dataMode == "demo") DemoNotice()
+            }
+            if (state.dataMode != "demo") Hint(when {
                 state.signalStatus == SignalStatus.INTERRUPTED -> "신호가 끊겨 안내를 멈췄어요"
                 state.signalStatus == SignalStatus.RECEIVING -> "연결됨 · 신호 수신 중"
                 else -> "연결됨 · 신호 기다리는 중"
             })
-            Panel(modifier = Modifier.weight(1f), color = if (state.phase == GuidePhase.REST || state.paused) CalmSurface else androidx.compose.ui.graphics.Color.White) {
+            Column(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(prompt, style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     if (maxHeight >= 48.dp) WristIllustration(side, attempt = !state.paused && state.phase == GuidePhase.ATTEMPT,
-                        modifier = Modifier.heightIn(max = 132.dp).fillMaxHeight())
+                        modifier = Modifier.heightIn(max = 210.dp).fillMaxHeight().padding(8.dp))
                 }
                 if (!state.paused && (state.dataMode == "demo" || state.signalStatus == SignalStatus.RECEIVING)) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("${state.phaseSecondsRemaining}", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = if (state.phase == GuidePhase.REST) Calm else Accent)
+                        Text("${state.phaseSecondsRemaining}", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = if (state.phase == GuidePhase.REST) Calm else Accent)
                         Text(when(state.phase) { GuidePhase.READY -> "초 뒤 시작"; GuidePhase.REST -> "초 뒤 다음 시도"; else -> "초 뒤 휴식" }, color = Muted, modifier = Modifier.padding(bottom = 8.dp))
                     }
                 }
@@ -181,3 +200,4 @@ fun GuideSettingsScreen(timing: GuideTiming, onDismiss: () -> Unit, onSave: (Int
         }
     }
 }
+

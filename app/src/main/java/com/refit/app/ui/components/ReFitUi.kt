@@ -1,6 +1,7 @@
 package com.refit.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -27,8 +32,9 @@ private val AppFont = FontFamily(
 )
 
 val Ink = Color(0xFF202930)
-val Muted = Color(0xFF68747D)
+val Muted = Color(0xFF59656F)
 val Accent = Color(0xFF55439B)
+val AccentSurface = Color(0xFFF0EDF9)
 val Calm = Color(0xFF236E62)
 val CalmSurface = Color(0xFFEAF5F1)
 val PageBackground = Color(0xFFF5F6F8)
@@ -40,14 +46,14 @@ fun ReFitTheme(content: @Composable () -> Unit) {
             background = PageBackground, surface = Color.White,
             onSurface = Ink, onBackground = Ink, outline = Color(0xFFDCE1E5)),
         typography = Typography(
-            headlineLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold),
+            headlineLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold),
             headlineMedium = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 26.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold),
-            titleLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.SemiBold),
+            titleLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
             titleMedium = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 19.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold),
-            bodyLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 18.sp, lineHeight = 28.sp),
+            bodyLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 17.sp, lineHeight = 26.sp),
             bodyMedium = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 16.sp, lineHeight = 24.sp),
             bodySmall = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 14.sp, lineHeight = 21.sp),
-            labelLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
+            labelLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
         ), content = content
     )
 }
@@ -67,11 +73,11 @@ fun Page(title: String, onBack: (() -> Unit)? = null, topAction: (@Composable ()
                 topAction?.invoke()
             }
         }, bottomBar = {
-            Column(Modifier.fillMaxWidth().background(PageBackground).navigationBarsPadding().imePadding().padding(horizontal = 16.dp, vertical = 12.dp),
+            Column(Modifier.fillMaxWidth().background(PageBackground).navigationBarsPadding().imePadding().padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp), content = footer)
         }) { inset ->
         val body = Modifier.fillMaxSize().padding(inset).then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier).padding(horizontal = 20.dp)
-        Column(body, verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 18.dp)) {
+        Column(body, verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 16.dp)) {
             if (!compact) Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 8.dp))
             content()
             Spacer(Modifier.height(8.dp))
@@ -81,15 +87,15 @@ fun Page(title: String, onBack: (() -> Unit)? = null, topAction: (@Composable ()
 
 @Composable
 fun Panel(modifier: Modifier = Modifier, color: Color = Color.White, content: @Composable ColumnScope.() -> Unit) {
-    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = color) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = color) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }
 
 @Composable
 fun PrimaryAction(text: String, onClick: () -> Unit, enabled: Boolean = true) {
-    Button(onClick, Modifier.fillMaxWidth().heightIn(min = 60.dp), enabled = enabled,
-        shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(16.dp)) { Text(text) }
+    Button(onClick, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled,
+        shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(14.dp)) { Text(text) }
 }
 
 @Composable
@@ -104,16 +110,16 @@ fun Hint(text: String) { Text(text, color = Muted, style = MaterialTheme.typogra
 @Composable
 fun LabelValue(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Muted, modifier = Modifier.weight(1f))
-        Text(value, fontWeight = FontWeight.SemiBold)
+        Text(label, color = Muted, modifier = Modifier.weight(1f).padding(end = 12.dp))
+        Text(value, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
     }
 }
 
 @Composable
 fun DemoNotice() {
-    Surface(color = Color(0xFFEEEAF8), shape = RoundedCornerShape(10.dp)) {
+    Surface(color = AccentSurface, shape = RoundedCornerShape(6.dp)) {
         Text("데모 · 모의 신호", color = Accent, style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
     }
 }
 
@@ -131,16 +137,43 @@ fun ChoiceRow(options: List<String>, selected: String?, onChoose: (String) -> Un
 
 @Composable
 fun BottomTabs(selected: String, onHome: () -> Unit, onHistory: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextButton(onHome, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-            Text("홈", color = if (selected == "home") Accent else Muted, fontWeight = FontWeight.SemiBold)
+    NavigationBar(containerColor = PageBackground, windowInsets = WindowInsets(0, 0, 0, 0), tonalElevation = 0.dp) {
+        NavigationBarItem(selected == "home", onHome,
+            icon = { NavigationGlyph(false, if (selected == "home") Accent else Muted) }, label = { Text("홈", style = MaterialTheme.typography.bodySmall) },
+            colors = NavigationBarItemDefaults.colors(indicatorColor = AccentSurface))
+        NavigationBarItem(selected == "history", onHistory,
+            icon = { NavigationGlyph(true, if (selected == "history") Accent else Muted) }, label = { Text("운동 기록", style = MaterialTheme.typography.bodySmall) },
+            colors = NavigationBarItemDefaults.colors(indicatorColor = AccentSurface))
+    }
+}
+
+@Composable
+private fun NavigationGlyph(history: Boolean, color: Color) {
+    Canvas(Modifier.size(24.dp)) {
+        val s = size.width / 24f
+        if (history) {
+            drawRoundRect(color, Offset(5*s, 3*s), Size(14*s, 18*s), androidx.compose.ui.geometry.CornerRadius(2*s), style = Stroke(1.8f*s))
+            for (y in listOf(8, 12, 16)) drawLine(color, Offset(8*s,y*s), Offset(16*s,y*s), 1.8f*s)
+        } else {
+            val path = Path().apply {
+                moveTo(3*s,11*s); lineTo(12*s,3*s); lineTo(21*s,11*s)
+                moveTo(6*s,9*s); lineTo(6*s,21*s); lineTo(10*s,21*s); lineTo(10*s,15*s)
+                lineTo(14*s,15*s); lineTo(14*s,21*s); lineTo(18*s,21*s); lineTo(18*s,9*s)
+            }
+            drawPath(path, color, style = Stroke(1.8f*s))
         }
-        TextButton(onHistory, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-            Text("운동 기록", color = if (selected == "history") Accent else Muted, fontWeight = FontWeight.SemiBold)
-        }
+    }
+}
+
+@Composable
+fun SummaryStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(value, style = MaterialTheme.typography.headlineMedium, color = Ink)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = Muted)
     }
 }
 
 fun formatTime(seconds: Long) = "%02d:%02d".format(seconds / 60, seconds % 60)
 fun formatDate(timestamp: Long, pattern: String = "M월 d일 · HH:mm"): String =
     Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(pattern, java.util.Locale.KOREAN))
+
