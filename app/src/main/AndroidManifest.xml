@@ -33,7 +33,7 @@
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="false"
-        android:label="Re:Fit"
+        android:label="${appLabel}"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReFit">
         <activity

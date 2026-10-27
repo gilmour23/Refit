@@ -30,6 +30,7 @@ android {
         targetSdk = 35
         versionCode = 11
         versionName = "0.6.0"
+        manifestPlaceholders["appLabel"] = "Re:Fit"
 
         buildConfigField(
             "String",
@@ -43,14 +44,31 @@ android {
         )
     }
 
+    signingConfigs {
+        create("preview") {
+            localProperties.getProperty("REFIT_PREVIEW_STORE_FILE")?.let { storeFile = file(it) }
+            storePassword = localProperties.getProperty("REFIT_PREVIEW_STORE_PASSWORD")
+            keyAlias = "refit-preview"
+            keyPassword = localProperties.getProperty("REFIT_PREVIEW_STORE_PASSWORD")
+        }
+    }
+
     buildTypes {
         create("qa") {
             initWith(getByName("release"))
             isDebuggable = false
             isJniDebuggable = false
-            // Preserve the existing installation and its local records during QA updates.
-            // A production distribution must use a separate managed release signing key.
+            // Local QA build only; this debug key may differ from an installed app.
+            // Use the separate preview package when the original signing key is unavailable.
             signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
+        create("preview") {
+            initWith(getByName("qa"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            manifestPlaceholders["appLabel"] = "Re:Fit 검토"
+            signingConfig = signingConfigs.getByName("preview")
             matchingFallbacks += listOf("release")
         }
     }
