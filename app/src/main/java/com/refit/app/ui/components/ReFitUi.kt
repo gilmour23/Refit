@@ -31,13 +31,13 @@ private val AppFont = FontFamily(
     Font(R.font.noto_sans_kr_700, FontWeight.Bold)
 )
 
-val Ink = Color(0xFF202930)
-val Muted = Color(0xFF59656F)
-val Accent = Color(0xFF55439B)
-val AccentSurface = Color(0xFFF0EDF9)
-val Calm = Color(0xFF236E62)
-val CalmSurface = Color(0xFFEAF5F1)
-val PageBackground = Color(0xFFF5F6F8)
+val Ink = Color(0xFF16324F)
+val Muted = Color(0xFF586A79)
+val Accent = Color(0xFF226D65)
+val AccentSurface = Color(0xFFE7F0F6)
+val Calm = Color(0xFF226D65)
+val CalmSurface = Color(0xFFEAF3EF)
+val PageBackground = Color(0xFFFFFFFF)
 
 @Composable
 fun ReFitTheme(content: @Composable () -> Unit) {
@@ -50,7 +50,7 @@ fun ReFitTheme(content: @Composable () -> Unit) {
             headlineMedium = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 26.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold),
             titleLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
             titleMedium = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 19.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold),
-            bodyLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 17.sp, lineHeight = 26.sp),
+            bodyLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 18.sp, lineHeight = 26.sp),
             bodyMedium = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 16.sp, lineHeight = 24.sp),
             bodySmall = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 14.sp, lineHeight = 21.sp),
             labelLarge = androidx.compose.ui.text.TextStyle(fontFamily = AppFont, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
@@ -94,14 +94,14 @@ fun Panel(modifier: Modifier = Modifier, color: Color = Color.White, content: @C
 
 @Composable
 fun PrimaryAction(text: String, onClick: () -> Unit, enabled: Boolean = true) {
-    Button(onClick, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled,
-        shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(14.dp)) { Text(text) }
+    Button(onClick, Modifier.fillMaxWidth().heightIn(min = 60.dp), enabled = enabled,
+        shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(14.dp)) { Text(text, fontSize = 20.sp) }
 }
 
 @Composable
 fun SecondaryAction(text: String, onClick: () -> Unit, enabled: Boolean = true) {
-    OutlinedButton(onClick, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled,
-        shape = RoundedCornerShape(16.dp), contentPadding = PaddingValues(14.dp)) { Text(text) }
+    OutlinedButton(onClick, Modifier.fillMaxWidth().heightIn(min = 60.dp), enabled = enabled,
+        shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(14.dp)) { Text(text, fontSize = 20.sp) }
 }
 
 @Composable
@@ -128,8 +128,8 @@ fun ChoiceRow(options: List<String>, selected: String?, onChoose: (String) -> Un
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         options.forEach { option ->
             Column(Modifier.weight(1f)) {
-                if (selected == option) PrimaryAction("✓ $option", { onChoose(option) }, enabled)
-                else SecondaryAction(option, { onChoose(option) }, enabled)
+                if (selected == option) Button({ onChoose(option) }, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled, shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 12.dp)) { Text("✓ $option", style = MaterialTheme.typography.bodyMedium) }
+                else OutlinedButton({ onChoose(option) }, Modifier.fillMaxWidth().heightIn(min = 56.dp), enabled = enabled, shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 12.dp)) { Text(option, style = MaterialTheme.typography.bodyMedium) }
             }
         }
     }

@@ -17,26 +17,28 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                sessions: List<RehabSessionEntity> = emptyList(), wristSide: String? = null, guideDescription: String = "시도 4초 · 휴식 6초 · 3회",
                onConfigure: () -> Unit = {}, onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: () -> Unit) {
     var showAccount by remember { mutableStateOf(false) }
-    Page("오늘의 운동", topAction = { TextButton({ showAccount = true }) { Text("계정") } },
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 720 || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f
+    Page("오늘의 손목 운동", topAction = { TextButton({ showAccount = true }) { Text("계정") } },
         footer = { BottomTabs("home", {}, onOpenHistory) }) {
+        if (!compact) Hint("차근차근, 오늘도 함께해요.")
         if (sessionRefreshPending) Hint("계정 연결을 복구 중입니다. 기록은 이 기기에 저장됩니다.")
         Panel(color = AccentSurface) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(wristSide?.let(::wristLabel) ?: "손목 운동", style = MaterialTheme.typography.bodyMedium, color = Accent)
+                Text("손목 펴기", style = MaterialTheme.typography.titleLarge, color = Ink)
                 DemoNotice()
             }
-            Text("손목 펴기 시도", style = MaterialTheme.typography.headlineMedium)
-            WristIllustration(wristSide, attempt = true, modifier = Modifier.height(110.dp))
+            WristIllustration(wristSide, attempt = true, modifier = Modifier.height(if (compact) 96.dp else 184.dp))
             Text(guideDescription, style = MaterialTheme.typography.bodyMedium, color = Muted)
             PrimaryAction("운동 준비하기", onStartExercise)
         }
-        TextButton(onConfigure, modifier = Modifier.align(Alignment.End)) { Text("안내 설정 ›") }
+        TextButton(onConfigure, modifier = Modifier.align(Alignment.Start)) { Text("안내 시간 설정") }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Text("최근 운동", style = MaterialTheme.typography.titleMedium)
             TextButton(onOpenHistory) { Text("전체 보기 ›") }
         }
         val latest = sessions.firstOrNull()
-        Panel {
+        HorizontalDivider()
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (latest == null) {
                 Text("아직 운동 기록이 없어요", fontWeight = FontWeight.SemiBold)
             } else {

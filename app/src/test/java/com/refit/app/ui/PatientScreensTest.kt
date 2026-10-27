@@ -134,7 +134,7 @@ class PatientScreensTest {
         } }
         compose.onNodeWithText("잠시 멈추기").assertIsDisplayed()
         compose.onNodeWithText("운동 마치기").assertIsDisplayed()
-        assertFullyVisible("손목을 펴려고\n시도하세요")
+        assertFullyVisible("손목을 펴보세요")
         assertFullyVisible("잠시 멈추기")
         assertFullyVisible("운동 마치기")
         capture("11-large-text")
@@ -146,7 +146,7 @@ class PatientScreensTest {
                 SessionContent(SessionUiState(running = true, wristSide = "left", phase = GuidePhase.ATTEMPT, phaseSecondsRemaining = 4), true, {}, {}, {}, {}, {}, {})
             }
         } }
-        assertFullyVisible("손목을 펴려고\n시도하세요")
+        assertFullyVisible("손목을 펴보세요")
         assertFullyVisible("잠시 멈추기")
         assertFullyVisible("운동 마치기")
         capture("16-short-large-text")

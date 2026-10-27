@@ -327,12 +327,12 @@ class SessionViewModel(
     }
 
     fun recordSymptoms(pain: String?, fatigue: String?) {
-        if (pain != null && pain !in listOf("없어요", "있어요")) return
-        if (fatigue != null && fatigue !in listOf("괜찮아요", "피곤해요")) return
+        if (pain != null && pain !in listOf("없어요", "있어요", "조금 아파요", "많이 아파요")) return
+        if (fatigue != null && fatigue !in listOf("괜찮아요", "피곤해요", "조금 힘듦", "많이 힘듦")) return
         val id = _uiState.value.result?.savedSessionId ?: return
         viewModelScope.launch {
             try {
-                val comfort = if (pain == "있어요") "불편했어요" else "괜찮아요"
+                val comfort = if (pain != null && pain != "없어요") "불편했어요" else "괜찮아요"
                 if (pain != null) repository.updatePain(id, userId, pain, comfort)
                 if (fatigue != null) repository.updateFatigue(id, userId, fatigue)
                 _uiState.update { state -> state.copy(result = state.result?.copy(
