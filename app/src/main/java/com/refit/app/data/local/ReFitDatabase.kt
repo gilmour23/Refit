@@ -9,8 +9,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [RehabSessionEntity::class],
-    version = 4,
+    entities = [EncryptedSessionRow::class],
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -20,6 +20,25 @@ abstract class ReFitDatabase : RoomDatabase() {
 
     companion object {
         private const val LEGACY_USER_ID = "__legacy__"
+        val MIGRATION_4_5 = EncryptedRecordMigration()
+
+        val SECURE_STORAGE_CALLBACK = object : Callback() {
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                db.query("PRAGMA secure_delete=ON").use { c ->
+                    check(c.moveToFirst() && c.getInt(0) == 1) { "Secure database deletion is unavailable" }
+                }
+                // Remove deleted plaintext pages and old WAL frames after migration.
+                val freePages = db.query("PRAGMA freelist_count").use { c -> c.moveToFirst(); c.getInt(0) }
+                if (freePages > 0) db.execSQL("VACUUM")
+                db.query("PRAGMA wal_checkpoint(TRUNCATE)").use { c ->
+                    if (c.moveToFirst()) check(c.getInt(0) == 0) { "Encrypted database cleanup is busy" }
+                }
+                val converter = RoomConverters()
+                db.query("SELECT id, ownerTag, clientTag, record FROM rehab_sessions").use { c ->
+                    while (c.moveToNext()) EncryptedSessionRow(c.getLong(0), c.getString(1), c.getString(2), converter.ciphertextToRecord(c.getString(3))).decoded()
+                }
+            }
+        }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -92,7 +111,8 @@ abstract class ReFitDatabase : RoomDatabase() {
                     ReFitDatabase::class.java,
                     "refit.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addCallback(SECURE_STORAGE_CALLBACK)
                     .build()
                     .also { database ->
                         INSTANCE = database

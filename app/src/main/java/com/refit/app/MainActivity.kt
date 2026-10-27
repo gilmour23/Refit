@@ -17,6 +17,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
+import com.refit.app.data.local.ReFitDatabase
+import com.refit.app.ui.components.Page
+import com.refit.app.ui.components.PrimaryAction
+import androidx.compose.material3.Text
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +51,7 @@ private enum class AppPage {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.refit.app.data.remote.SupabaseClientProvider.initialize(applicationContext)
 
         setContent {
             ReFitTheme {
@@ -91,13 +99,31 @@ private fun ReFitRoot() {
 
         is AuthState.Authenticated -> {
             key(state.userId) {
-                AuthenticatedApp(
+                CheckedAuthenticatedApp(
                     auth = state,
                     accountOwner = authViewModel.accountViewModelStoreOwner,
                     onSignOut = authViewModel::signOut
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CheckedAuthenticatedApp(auth: AuthState.Authenticated, accountOwner: ViewModelStoreOwner, onSignOut: () -> Unit) {
+    val context = LocalContext.current.applicationContext
+    val storage by produceState<Result<Unit>?>(null, auth.userId) {
+        value = withContext(Dispatchers.IO) {
+            runCatching { ReFitDatabase.getInstance(context).openHelper.writableDatabase; Unit }
+        }
+    }
+    when {
+        storage == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        storage!!.isFailure -> Page("저장된 기록을 열 수 없어요") {
+            Text("기록은 지우지 않았습니다. 앱을 삭제하지 말고 관리자에게 문의해 주세요.")
+            PrimaryAction("로그아웃", onSignOut)
+        }
+        else -> AuthenticatedApp(auth, accountOwner, onSignOut)
     }
 }
 

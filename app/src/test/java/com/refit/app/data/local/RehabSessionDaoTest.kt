@@ -73,7 +73,7 @@ class RehabSessionDaoTest {
             old.version = 3
         }
         val db = Room.databaseBuilder(context, ReFitDatabase::class.java, name)
-            .addMigrations(ReFitDatabase.MIGRATION_3_4).build()
+            .addMigrations(ReFitDatabase.MIGRATION_3_4, ReFitDatabase.MIGRATION_4_5).addCallback(ReFitDatabase.SECURE_STORAGE_CALLBACK).build()
         try {
             val row = db.rehabSessionDao().getById(1, "owner-a")!!
             assertEquals(42L, row.createdAt); assertEquals(3, row.completedAttempts)
@@ -99,7 +99,7 @@ class RehabSessionDaoTest {
             old.version = 1
         }
         val db = Room.databaseBuilder(context, ReFitDatabase::class.java, name)
-            .addMigrations(ReFitDatabase.MIGRATION_1_2, ReFitDatabase.MIGRATION_2_3, ReFitDatabase.MIGRATION_3_4).build()
+            .addMigrations(ReFitDatabase.MIGRATION_1_2, ReFitDatabase.MIGRATION_2_3, ReFitDatabase.MIGRATION_3_4, ReFitDatabase.MIGRATION_4_5).addCallback(ReFitDatabase.SECURE_STORAGE_CALLBACK).build()
         try {
             val legacy = db.rehabSessionDao().observeAll("__legacy__").first().single()
             assertEquals(42L, legacy.createdAt)

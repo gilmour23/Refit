@@ -18,10 +18,11 @@ import kotlinx.coroutines.flow.map
 class AuthRepository(
     private val client: SupabaseClient? = SupabaseClientProvider.clientOrNull()
 ) {
-    private companion object {
+    companion object {
+        const val MIN_NEW_PASSWORD_LENGTH = 12
         // Activities can create separate repositories over the app's shared
         // client. An earlier root's logout must finish before a new login.
-        val authOperation = Mutex()
+        private val authOperation = Mutex()
     }
 
     val authState: Flow<AuthState> =
@@ -72,6 +73,7 @@ class AuthRepository(
     }
 
     suspend fun signUp(email: String, password: String) = authOperation.withLock {
+        require(password.length >= MIN_NEW_PASSWORD_LENGTH) { "새 비밀번호는 12자 이상으로 설정해주세요." }
         val authClient = requireClient().auth
         authClient.signUpWith(Email) {
             this.email = email

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewModelScope
 import com.refit.app.auth.AuthRepository
 import com.refit.app.auth.AuthState
+import com.refit.app.auth.SessionStorageException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -84,7 +85,9 @@ class AuthViewModel(
             } catch (error: Exception) {
                 currentCoroutineContext().ensureActive()
                 _uiState.value = AuthUiState(
-                    message = "계정 접근을 종료했습니다. 서버 세션 해지를 확인하지 못했습니다. 연결을 확인해주세요."
+                    message = if (error is SessionStorageException) {
+                        "기기의 로그인 정보 삭제를 완료하지 못했습니다. 관리자에게 문의해주세요."
+                    } else "계정 접근을 종료했습니다. 서버 세션 해지를 확인하지 못했습니다. 연결을 확인해주세요."
                 )
             }
         }
@@ -103,8 +106,11 @@ class AuthViewModel(
             return
         }
 
-        if (password.length < 6) {
-            _uiState.value = AuthUiState(message = "비밀번호는 6자 이상이어야 합니다.")
+        val minimumLength = if (isSignUp) AuthRepository.MIN_NEW_PASSWORD_LENGTH else 6
+        if (password.length < minimumLength) {
+            _uiState.value = AuthUiState(message = if (isSignUp) {
+                "새 비밀번호는 12자 이상으로 설정해주세요."
+            } else "비밀번호는 6자 이상이어야 합니다.")
             return
         }
 
