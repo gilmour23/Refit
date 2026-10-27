@@ -19,7 +19,7 @@ The two original regression tests were first run against the old implementation 
 
 The focused migration/DAO/synchronization run completed successfully: **21 tests, 0 failures, 0 errors, 0 skipped**. It covers old schema migration and ownership, on-disk marker absence, rollback on key failure, database reopen, duplicate client IDs, owner-tag tampering, same-owner ciphertext substitution, and synchronization behavior.
 
-The final whole-unit-suite run completed: **92 tests across 20 classes, 0 failures, 0 errors, 0 skipped**. Full debug lint passed with **0 errors and 21 warnings** (dependency/update, target API, resources/icon and style findings; no security-specific lint finding). Final signed APK verification is pending below.
+The final whole-unit-suite run completed: **92 tests across 20 classes, 0 failures, 0 errors, 0 skipped**. Full debug lint passed with **0 errors and 21 warnings** (dependency/update, target API, resources/icon and style findings; no security-specific lint finding). Signed preview build and lintVitalPreview also passed (**BUILD SUCCESSFUL in 8m 32s**, 51 tasks).
 
 A fresh read-only review found interrupted session cleanup/logout risks; the implemented cleanup retry and durable marker are covered by passing EncryptedSessionManager tests from the first whole-suite run. That first run also exposed the PRAGMA API and tied-order regressions; these were corrected without weakening their assertions.
 
@@ -34,3 +34,16 @@ A fresh read-only review found interrupted session cleanup/logout risks; the imp
 ## Deployment state
 
 No merge or public-store release is performed by this task. The preview uses the existing dedicated signing identity and retains the review package ID for in-place updates of the preview app. Original-app local records remain in the original app; this preview does not retroactively encrypt the original app's stored credentials or records.
+
+## Final APK evidence
+
+- Package com.refit.app.preview, versionCode 12, versionName 0.6.1-preview, label Re:Fit 검토.
+- Size: 13,414,089 bytes. SHA-256: `2cf1d981d7d27513c6fb5adb80b3b899389643fbe975118cf072eba8a9b903a7`.
+- Verified v2 signature; certificate SHA-256 `b556afc2d65b048da0eb502a8dc6a22a8754cc022bd987b04b208b4ce8a8e3cc` matches the 0.6.0-preview signer. This is an in-place preview update, not an original-app replacement.
+- Non-debuggable; cloud/device backup excluded; cleartext traffic disabled; no debug preview activity. APK archive CRC passes.
+- Actual project URL and enabled publishable client key included; no bundled signing file/local.properties, server-secret key pattern, service_role JWT, or test-only Keystore provider found. Changed-source scan (23 files) found no private-key, server-secret or GitHub-token patterns.
+- Implementation source is committed at `52de3be81bfbd016ba71db123c3f32670adab802`. Fresh CI [40518565641](https://github.com/gilmour23/Refit/actions/runs/40518565641) is tracked separately from these verified local results.
+
+## Fresh clean CI
+
+Implementation commit 52de3be81bfbd016ba71db123c3f32670adab802: workflow 40518565641 finished with conclusion **success**.

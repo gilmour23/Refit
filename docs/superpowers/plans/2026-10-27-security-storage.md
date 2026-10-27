@@ -23,8 +23,8 @@
 - [x] Recheck server advisor; report plan-dependent feature if unavailable.
 
 ## Task 4 — Delivery
-- [ ] Run complete unit suite, lint and signed preview build. Review changed code and package independently of implementation steps.
-- [ ] Verify version increment, signature continuity, no private key/server secret in APK and persistent download delivery.
+- [x] Run complete unit suite, lint and signed preview build. Review changed code and package independently of implementation steps.
+- [x] Verify version increment, signature continuity, no private key/server secret in APK and persistent download delivery.
 
 ## Execution ledger
 - Baseline: audit run passed 32 auth/account/sync tests. Current directory is a task-specific scratch checkout on chore/figma-patient-ui, with previous approved UI changes not represented by its synthetic local git baseline. Preserve those changes; compare explicit file list with remote branch and update via GitHub leased ref.
@@ -47,3 +47,7 @@
 - Final whole suite now completed: 92/92 passed (20 classes, zero failures/errors/skipped). Lint and signed preview generation remain in progress under parent session 84071. No more production source changes planned.
 
 - Final full suite + debug lint: BUILD SUCCESSFUL in 10m 58s, 92/92 tests; lint 0 errors / 21 warnings. Preview compilation ongoing; paid leaked-password setting remains explicitly unresolved.
+
+- Final preview APK built successfully, v2 signer continuity verified, real publishable client config checked and no test provider/key material bundled. APK delivery replacement succeeded (current version 1, ReFit-0.6.1-preview.apk); physical-device install/login/update remains unverified.
+
+- Delivery: persistent APK replaced successfully after validation; original preview signing identity retained. Source committed at 52de3be81bfbd016ba71db123c3f32670adab802; draft PR #6 updated. Documentation-only evidence update does not change the tested/built production code.
