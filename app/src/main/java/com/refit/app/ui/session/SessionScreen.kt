@@ -66,6 +66,7 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
     LaunchedEffect(state.wristSide) { if (state.wristSide != null) chosenSide = state.wristSide }
     val side = state.wristSide ?: chosenSide
     val preparing = !state.running
+    val accessibilityScroll = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f
     val interrupted = state.signalStatus == SignalStatus.INTERRUPTED
     val waiting = state.dataMode == "sensor" && state.signalStatus == SignalStatus.WAITING
     val prompt = if (preparing) when(step) {
@@ -88,7 +89,7 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
     LaunchedEffect(spoken) { onInstruction(spoken) }
     BackHandler(enabled = preparing) { if (step > 0) step-- else onBack() }
     Page(if (preparing) "운동 준비" else "손목 펴기", { if (preparing && step > 0) step-- else onBack() },
-        compact = true, scrollable = preparing,
+        compact = true, scrollable = preparing || accessibilityScroll,
         topAction = {
             TextButton({ onVoice(!voice) }, enabled = voiceStatus != VoiceStatus.UNAVAILABLE) {
                 Text(when(voiceStatus) { VoiceStatus.LOADING -> "음성 준비 중"; VoiceStatus.UNAVAILABLE -> "음성 없음"; else -> if (voice) "음성 켜짐" else "음성 꺼짐" }, fontSize = 15.sp)
@@ -152,7 +153,7 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
                     style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.weight(1f))
                 Text(formatTime(state.elapsedSeconds), style = MaterialTheme.typography.bodySmall, color = Muted)
             }
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            BoxWithConstraints(Modifier.fillMaxWidth().then(if (accessibilityScroll) Modifier else Modifier.weight(1f))) {
                 val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f
                 val illustrationHeight = (maxHeight - 312.dp).coerceIn(0.dp, 184.dp)
                 val compact = illustrationHeight < 72.dp || largeText
@@ -200,11 +201,26 @@ fun GuideSettingsScreen(timing: GuideTiming, onDismiss: () -> Unit, onSave: (Int
         DemoNotice()
         Panel {
             Hint("배운 운동 방법에 맞춰 사용하세요.")
-            OutlinedTextField(attempt,{attempt=it},label={Text("시도 시간 · 1~60초")},singleLine=true,keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
-            OutlinedTextField(rest,{rest=it},label={Text("휴식 시간 · 1~60초")},singleLine=true,keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
-            OutlinedTextField(count,{count=it},label={Text("반복 안내 · 1~30회")},singleLine=true,keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
+            TimingInput("시도", attempt, { attempt = it }, 60, "초", "attempt-time")
+            TimingInput("휴식", rest, { rest = it }, 60, "초", "rest-time")
+            TimingInput("반복", count, { count = it }, 30, "회", "attempt-count")
             if (!valid) Text("각 항목에 범위 안의 정수를 입력하세요.",color=MaterialTheme.colorScheme.error)
         }
     }
 }
 
+
+@Composable
+private fun TimingInput(label: String, value: String, onValue: (String) -> Unit, max: Int, unit: String, tag: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Muted, modifier = Modifier.weight(1f))
+        TextButton({ onValue(((value.toIntOrNull() ?: 1) - 1).coerceIn(1, max).toString()) },
+            modifier = Modifier.semantics { contentDescription = "$label 줄이기" }) { Text("−") }
+        OutlinedTextField(value, onValue, Modifier.width(82.dp).then(Modifier.semantics { testTag = tag; contentDescription = "$label 시간" }),
+            singleLine = true, suffix = { Text(unit) }, textStyle = MaterialTheme.typography.bodyLarge,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        TextButton({ onValue(((value.toIntOrNull() ?: 1) + 1).coerceIn(1, max).toString()) },
+            modifier = Modifier.semantics { contentDescription = "$label 늘리기" }) { Text("+") }
+    }
+    HorizontalDivider()
+}

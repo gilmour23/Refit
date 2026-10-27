@@ -170,9 +170,9 @@ class PatientScreensTest {
             GuideSettingsScreen(GuideTiming(), {}, { a, r, n -> applied = Triple(a, r, n) })
         } }
         capture("12-settings")
-        compose.onNodeWithText("시도 시간 · 1~60초").performTextReplacement("0")
+        compose.onNodeWithTag("attempt-time").performTextReplacement("0")
         compose.onNodeWithText("적용").assertIsNotEnabled()
-        compose.onNodeWithText("시도 시간 · 1~60초").performTextReplacement("5")
+        compose.onNodeWithTag("attempt-time").performTextReplacement("5")
         compose.onNodeWithText("적용").performClick()
         assertEquals(Triple(5,6,3), applied)
     }

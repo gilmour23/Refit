@@ -10,7 +10,7 @@ class ActivationPresentationTest {
     @Test fun largerMockRmsFillsMoreOfTheBarWithoutExceedingItsBounds() {
         val low = activationPresentation(active.copy(currentActivation = .05f))
         val high = activationPresentation(active.copy(currentActivation = .3f))
-        assertTrue(high.fraction > low.fraction, 0.0001f)
+        assertTrue(high.fraction > low.fraction)
         assertEquals(1f, activationPresentation(active.copy(currentActivation = 10f)).fraction, 0.0001f)
         assertFalse(low.message.contains("감지됐어요"))
         assertTrue(high.message.contains("감지됐어요"))
