@@ -134,7 +134,7 @@ class PatientScreensTest {
         } }
         compose.onNodeWithText("잠시 멈추기").assertIsDisplayed()
         compose.onNodeWithText("운동 마치기").assertIsDisplayed()
-        assertFullyVisible("손목을 펴려고\n시도하세요")
+        assertFullyVisible("손목을 펴보세요")
         assertFullyVisible("잠시 멈추기")
         assertFullyVisible("운동 마치기")
         capture("11-large-text")
@@ -146,7 +146,7 @@ class PatientScreensTest {
                 SessionContent(SessionUiState(running = true, wristSide = "left", phase = GuidePhase.ATTEMPT, phaseSecondsRemaining = 4), true, {}, {}, {}, {}, {}, {})
             }
         } }
-        assertFullyVisible("손목을 펴려고\n시도하세요")
+        assertFullyVisible("손목을 펴보세요")
         assertFullyVisible("잠시 멈추기")
         assertFullyVisible("운동 마치기")
         capture("16-short-large-text")
@@ -170,9 +170,9 @@ class PatientScreensTest {
             GuideSettingsScreen(GuideTiming(), {}, { a, r, n -> applied = Triple(a, r, n) })
         } }
         capture("12-settings")
-        compose.onNodeWithText("시도 시간 · 1~60초").performTextReplacement("0")
+        compose.onNodeWithTag("attempt-time").performTextReplacement("0")
         compose.onNodeWithText("적용").assertIsNotEnabled()
-        compose.onNodeWithText("시도 시간 · 1~60초").performTextReplacement("5")
+        compose.onNodeWithTag("attempt-time").performTextReplacement("5")
         compose.onNodeWithText("적용").performClick()
         assertEquals(Triple(5,6,3), applied)
     }

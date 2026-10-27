@@ -40,10 +40,14 @@ fun HistoryScreen(sessions: List<RehabSessionEntity>, onBack: () -> Unit, isSync
         }
         sessions.groupBy { formatDate(it.createdAt, "M월 d일 EEEE") }.forEach { (date, rows) ->
             Text(date, style = MaterialTheme.typography.titleMedium)
-            Panel {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 rows.forEachIndexed { index, session ->
                     if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Column(Modifier.fillMaxWidth().clickable { selectedId = session.id }.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth().clickable { selectedId = session.id }.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = AccentSurface, shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp), modifier = Modifier.size(64.dp)) {
+                            com.refit.app.ui.session.WristIllustration(session.wristSide, true, Modifier.size(64.dp))
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(session.wristSide?.let(::wristLabel) ?: "손목 펴기 시도", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                             Text(formatTime(session.durationSeconds), fontWeight = FontWeight.SemiBold)
@@ -53,6 +57,7 @@ fun HistoryScreen(sessions: List<RehabSessionEntity>, onBack: () -> Unit, isSync
                         val symptoms = listOfNotNull(session.pain?.let { "통증 · $it" }, session.fatigue?.let { "피로 · $it" })
                         if (symptoms.isNotEmpty()) Hint(symptoms.joinToString("  /  "))
                         else session.comfort?.let { Hint("운동 후 · $it") }
+                        }
                     }
                 }
             }
@@ -66,7 +71,8 @@ fun HistoryDetailScreen(session: RehabSessionEntity, onBack: () -> Unit) {
     Page("운동 상세", onBack, footer = { SecondaryAction("기록으로 돌아가기", onBack) }) {
         Hint(formatDate(session.createdAt, "yyyy년 M월 d일 · HH:mm"))
         if (session.dataMode == "demo") DemoNotice()
-        Panel {
+        com.refit.app.ui.session.WristIllustration(session.wristSide, true, Modifier.height(184.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(session.wristSide?.let(::wristLabel) ?: "손목 펴기 시도", style = MaterialTheme.typography.titleLarge)
             HorizontalDivider()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {

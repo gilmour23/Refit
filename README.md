@@ -1,10 +1,10 @@
-# Re:Fit 0.5.4
+# Re:Fit 0.6.0
 
 뇌졸중 후 손목을 펴려는 시도를 화면과 음성으로 안내하고 운동 기록을 남기는 Kotlin/Jetpack Compose Android 개발 프로젝트입니다.
 
 ## 현재 상태
 
-- 0.5.4: 홈의 운동 시작 영역, 단계별 준비, 운동 그림, 결과 요약, 날짜별 기록 목록과 하단 탐색을 정돈했습니다. 운동·인증·저장 기능은 유지합니다.
+- 0.6.0: 홈의 운동 시작 영역, 단계별 준비, 운동 그림, 결과 요약, 날짜별 기록 목록과 하단 탐색을 정돈했습니다. 운동·인증·저장 기능은 유지합니다.
 
 - 홈 → 좌우·자세·착용 준비 → 준비 3초 → 시도·휴식 → 운동 후 상태 → 기록.
 - 일시정지·중간 종료·백그라운드 전환과 한국어 음성 상태를 처리합니다.
@@ -46,3 +46,7 @@ macOS/Linux에서는 `./gradlew`를 사용합니다. SDK 36이 필요하며 최�
 
 실제 휴대폰·센서·한국어 음성 출력 검증은 남아 있습니다. 환자 화면에서 임상적 회복 판단을 제공하지 않습니다.
 
+
+## Approved patient design (0.6.0)
+
+Native Compose screens use the approved Figma navy/teal theme and original authored wrist assets. The live demo activation bar uses the existing RMS stream; pause, missing signal and invalid data clear it. Demo scaling is not applied to real sensor data. Three pain/fatigue levels are accepted alongside legacy values. No real sensor calibration or motor control is added.

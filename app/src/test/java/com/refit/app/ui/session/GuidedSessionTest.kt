@@ -363,6 +363,29 @@ class GuidedSessionTest {
         } finally { store.clear(); db.close(); Dispatchers.resetMain() }
     }
 
+    @Test fun newSymptomLevelsPersistAndRemainOwnedByTheAccount() = runBlocking {
+        val scheduler = TestCoroutineScheduler()
+        Dispatchers.setMain(UnconfinedTestDispatcher(scheduler))
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val db = Room.inMemoryDatabaseBuilder(app, ReFitDatabase::class.java).build()
+        val repo = RehabSessionRepository(db.rehabSessionDao()); val store = ViewModelStore()
+        try {
+            val vm = SessionViewModel(app, "symptom-levels", Source(), repository = repo,
+                syncCoordinator = SessionSyncCoordinator(repo, RehabSessionRemoteDataSource(null)))
+            store.put("session", vm); vm.configureWristSide("left"); vm.startSession(); vm.stopSession()
+            val saved = withTimeout(5000) { vm.uiState.first { it.result != null }.result!! }
+            vm.recordSymptoms("많이 아파요", "조금 힘듦")
+            withTimeout(5000) { vm.uiState.first { it.result?.pain == "많이 아파요" && it.result?.fatigue == "조금 힘듦" } }
+            val row = db.rehabSessionDao().getById(saved.savedSessionId!!, "symptom-levels")!!
+            assertEquals("많이 아파요", row.pain)
+            assertEquals("조금 힘듦", row.fatigue)
+            assertEquals("불편했어요", row.comfort)
+            assertNull(db.rehabSessionDao().getById(saved.savedSessionId, "other-owner"))
+            vm.recordSymptoms("unknown", null)
+            assertEquals("많이 아파요", vm.uiState.value.result!!.pain)
+        } finally { store.clear(); db.close(); Dispatchers.resetMain() }
+    }
+
     private class Source(private val seedOnConnect: Boolean = true, private val onConnect: suspend () -> Unit = {}) : EmgDataSource {
         override val connectionState = MutableStateFlow<EmgConnectionState>(EmgConnectionState.Disconnected)
         val samples = MutableSharedFlow<EmgSample>(replay = 1)

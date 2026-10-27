@@ -6,7 +6,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.refit.app.data.model.SyncStatus
 import java.util.UUID
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(
     tableName = "rehab_sessions",
     indices = [

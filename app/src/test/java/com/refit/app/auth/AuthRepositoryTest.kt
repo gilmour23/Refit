@@ -35,7 +35,8 @@ class AuthRepositoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
     @Before fun clearStorage() {
-        context.getSharedPreferences("auth-test", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences("refit-secure-auth", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
     private fun client(engine: MockEngine = MockEngine { throw IOException("offline") }): SupabaseClient = createSupabaseClient("https://test.supabase.co", "public-test-key") {
@@ -47,9 +48,7 @@ class AuthRepositoryTest {
             autoLoadFromStorage = true
             autoSaveToStorage = true
             codeVerifierCache = MemoryCodeVerifierCache()
-            sessionManager = SettingsSessionManager(SharedPreferencesSettings(
-                context.getSharedPreferences("auth-test", Context.MODE_PRIVATE)
-            ))
+            sessionManager = EncryptedSessionManager(context, "https://test.supabase.co")
         }
     }
 
@@ -57,6 +56,15 @@ class AuthRepositoryTest {
         accessToken = "access-test", refreshToken = "refresh-test", expiresIn = 3600,
         tokenType = "bearer", user = UserInfo(aud = "authenticated", id = id, email = "$id@example.com")
     )
+
+    @Test fun newSignupRejectsShortPasswordBeforeContactingServer() = runBlocking {
+        val c = client()
+        try {
+            c.auth.awaitInitialization()
+            val error = runCatching { AuthRepository(c).signUp("owner-a@example.com", "six123") }.exceptionOrNull()
+            assertTrue("New signup must reject weak passwords locally", error is IllegalArgumentException)
+        } finally { c.close() }
+    }
 
     @Test fun passwordLoginPersistsSessionWithoutPersistingPassword() = runBlocking {
         val first = client(MockEngine {
@@ -68,11 +76,11 @@ class AuthRepositoryTest {
         })
         try {
             first.auth.awaitInitialization()
-            AuthRepository(first).signIn("owner-a@example.com", "test-password")
+            AuthRepository(first).signIn("owner-a@example.com", "six123")
             assertEquals(AuthState.Authenticated("owner-a", "owner-a@example.com"), AuthRepository(first).authState.first())
-            val saved = context.getSharedPreferences("auth-test", Context.MODE_PRIVATE).all.values.joinToString()
-            assertFalse(saved.contains("test-password"))
-            assertTrue(saved.contains("test-refresh"))
+            val saved = context.getSharedPreferences("refit-secure-auth", Context.MODE_PRIVATE).all.values.joinToString()
+            assertFalse(saved.contains("six123"))
+            assertFalse("Refresh credentials must not be stored as plaintext", saved.contains("test-refresh"))
         } finally { first.close() }
         val reopened = client()
         try {

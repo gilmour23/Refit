@@ -27,9 +27,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 data class SessionUiState(
+    val storageAvailable: Boolean = true,
     val connected: Boolean = false,
     val running: Boolean = false,
     val isConnecting: Boolean = false,
@@ -105,7 +107,10 @@ class SessionViewModel(
             }
         }
         viewModelScope.launch {
-            repository.observeAll(userId).collect { history ->
+            repository.observeAll(userId).catch {
+                _uiState.update { it.copy(storageAvailable = false, history = emptyList(),
+                    message = "저장된 기록을 열 수 없습니다. 기록은 유지됩니다. 관리자에게 문의해 주세요.") }
+            }.collect { history ->
                 _uiState.update { it.copy(history = history) }
             }
         }
@@ -171,6 +176,7 @@ class SessionViewModel(
     }
 
     fun startSession() {
+        if (!_uiState.value.storageAvailable) return
         if (_uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return
         if (_uiState.value.wristSide == null) {
             _uiState.update { it.copy(message = "운동할 손목을 선택하세요.") }
@@ -327,12 +333,12 @@ class SessionViewModel(
     }
 
     fun recordSymptoms(pain: String?, fatigue: String?) {
-        if (pain != null && pain !in listOf("없어요", "있어요")) return
-        if (fatigue != null && fatigue !in listOf("괜찮아요", "피곤해요")) return
+        if (pain != null && pain !in listOf("없어요", "있어요", "조금 아파요", "많이 아파요")) return
+        if (fatigue != null && fatigue !in listOf("괜찮아요", "피곤해요", "조금 힘듦", "많이 힘듦")) return
         val id = _uiState.value.result?.savedSessionId ?: return
         viewModelScope.launch {
             try {
-                val comfort = if (pain == "있어요") "불편했어요" else "괜찮아요"
+                val comfort = if (pain != null && pain != "없어요") "불편했어요" else "괜찮아요"
                 if (pain != null) repository.updatePain(id, userId, pain, comfort)
                 if (fatigue != null) repository.updateFatigue(id, userId, fatigue)
                 _uiState.update { state -> state.copy(result = state.result?.copy(
