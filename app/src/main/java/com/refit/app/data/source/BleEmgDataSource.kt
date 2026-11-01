@@ -18,6 +18,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.ParcelUuid
 import com.refit.app.data.model.EmgSample
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -52,6 +54,7 @@ class BleEmgDataSource(
 
     private var gatt: BluetoothGatt? = null
     private var connectContinuation: CancellableContinuation<Unit>? = null
+    private var generation = 0L
     private var scanning = false
     private var selectedDeviceName: String? = null
     private val _rssi = MutableStateFlow<Int?>(null)
@@ -69,8 +72,9 @@ class BleEmgDataSource(
     private val scanner
         get() = bluetoothManager.adapter?.bluetoothLeScanner
 
-    override suspend fun connect() {
-        if (_connectionState.value is EmgConnectionState.Connected) return
+    override suspend fun connect() = withContext(Dispatchers.Main.immediate) {
+        if (_connectionState.value is EmgConnectionState.Connected) return@withContext
+        val attempt = ++generation
 
         requireBlePermissions()
 
@@ -85,9 +89,14 @@ class BleEmgDataSource(
             suspendCancellableCoroutine { continuation ->
                 connectContinuation = continuation
                 continuation.invokeOnCancellation {
-                    stopScan()
-                    closeGatt()
-                    _connectionState.value = EmgConnectionState.Disconnected
+                    onMain {
+                            if (generation == attempt) {
+                                stopScan()
+                                closeGatt()
+                                connectContinuation = null
+                                _connectionState.value = EmgConnectionState.Disconnected
+                            }
+                    }
                 }
                 val address = config.deviceAddress
                 if (address == null) startScan() else {
@@ -104,7 +113,8 @@ class BleEmgDataSource(
         }
     }
 
-    override suspend fun disconnect() {
+    override suspend fun disconnect() = withContext(Dispatchers.Main.immediate) {
+        generation++
         stopScan()
         closeGatt()
         connectContinuation?.cancel()
@@ -158,36 +168,42 @@ class BleEmgDataSource(
             callbackType: Int,
             result: ScanResult
         ) {
-            try {
-                if (!scanning && config.deviceAddress != null) return
-                val device = result.device
-                val advertisedName = result.scanRecord?.deviceName
-                val name = advertisedName ?: runCatching { device.name }.getOrNull()
+            onMain {
+                try {
+                    if (!scanning) return@onMain
+                    val device = result.device
+                    val advertisedName = result.scanRecord?.deviceName
+                    val name = advertisedName ?: runCatching { device.name }.getOrNull()
 
-                val prefix = config.deviceNamePrefix
-                if (prefix != null && name?.startsWith(prefix) != true) {
-                    return
+                    val prefix = config.deviceNamePrefix
+                    if (prefix != null && name?.startsWith(prefix) != true) {
+                        return@onMain
+                    }
+
+                    stopScan()
+                    selectedDeviceName = name
+                    _rssi.value = result.rssi
+                    _connectionState.value =
+                        EmgConnectionState.Connecting(name)
+
+                    gatt = device.connectGatt(
+                        appContext,
+                        false,
+                        gattCallback,
+                        BluetoothDevice.TRANSPORT_LE
+                    )
+                } catch (_: SecurityException) {
+                    failConnection("Bluetooth connection permission was revoked.")
                 }
 
-                stopScan()
-                selectedDeviceName = name
-                _rssi.value = result.rssi
-                _connectionState.value =
-                    EmgConnectionState.Connecting(name)
-
-                gatt = device.connectGatt(
-                    appContext,
-                    false,
-                    gattCallback,
-                    BluetoothDevice.TRANSPORT_LE
-                )
-            } catch (_: SecurityException) {
-                failConnection("Bluetooth connection permission was revoked.")
             }
         }
 
         override fun onScanFailed(errorCode: Int) {
-            failConnection("BLE scan failed with code ${errorCode}.")
+            onMain {
+                failConnection("BLE scan failed with code ${errorCode}.")
+
+            }
         }
     }
 
@@ -198,30 +214,33 @@ class BleEmgDataSource(
             status: Int,
             newState: Int
         ) {
-            if (gatt !== this@BleEmgDataSource.gatt) return
-            if (status != BluetoothGatt.GATT_SUCCESS) {
-                failConnection("BLE connection failed with status ${status}.")
-                return
-            }
+            onMain {
+                if (gatt !== this@BleEmgDataSource.gatt) return@onMain
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    failConnection("BLE connection failed with status ${status}.")
+                    return@onMain
+                }
 
-            when (newState) {
-                BluetoothProfile.STATE_CONNECTED -> {
-                    try {
-                        if (!gatt.discoverServices()) {
-                            failConnection("Could not start GATT service discovery.")
+                when (newState) {
+                    BluetoothProfile.STATE_CONNECTED -> {
+                        try {
+                            if (!gatt.discoverServices()) {
+                                failConnection("Could not start GATT service discovery.")
+                            }
+                        } catch (_: SecurityException) {
+                            failConnection("Bluetooth connection permission was revoked.")
                         }
-                    } catch (_: SecurityException) {
-                        failConnection("Bluetooth connection permission was revoked.")
+                    }
+
+                    BluetoothProfile.STATE_DISCONNECTED -> {
+                        _connectionState.value = EmgConnectionState.Disconnected
+                        closeGatt()
+                        if (connectContinuation?.isActive == true) {
+                            failConnection("BLE device disconnected during setup.")
+                        }
                     }
                 }
 
-                BluetoothProfile.STATE_DISCONNECTED -> {
-                    _connectionState.value = EmgConnectionState.Disconnected
-                    closeGatt()
-                    if (connectContinuation?.isActive == true) {
-                        failConnection("BLE device disconnected during setup.")
-                    }
-                }
             }
         }
 
@@ -229,22 +248,25 @@ class BleEmgDataSource(
             gatt: BluetoothGatt,
             status: Int
         ) {
-            if (gatt !== this@BleEmgDataSource.gatt) return
-            if (status != BluetoothGatt.GATT_SUCCESS) {
-                failConnection("GATT service discovery failed with status ${status}.")
-                return
+            onMain {
+                if (gatt !== this@BleEmgDataSource.gatt) return@onMain
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    failConnection("GATT service discovery failed with status ${status}.")
+                    return@onMain
+                }
+
+                val service = gatt.getService(config.serviceUuid)
+                    ?: return@onMain failConnection("Configured EMG service was not found.")
+
+                val characteristic =
+                    service.getCharacteristic(config.notifyCharacteristicUuid)
+                        ?: return@onMain failConnection(
+                            "Configured EMG characteristic was not found."
+                        )
+
+                enableNotifications(gatt, characteristic)
+
             }
-
-            val service = gatt.getService(config.serviceUuid)
-                ?: return failConnection("Configured EMG service was not found.")
-
-            val characteristic =
-                service.getCharacteristic(config.notifyCharacteristicUuid)
-                    ?: return failConnection(
-                        "Configured EMG characteristic was not found."
-                    )
-
-            enableNotifications(gatt, characteristic)
         }
 
         @Deprecated("Deprecated in Android 13")
@@ -252,7 +274,10 @@ class BleEmgDataSource(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
         ) {
-            if (gatt === this@BleEmgDataSource.gatt) handlePayload(characteristic.value ?: return)
+            onMain {
+                if (gatt === this@BleEmgDataSource.gatt) handlePayload(characteristic.value ?: return@onMain)
+
+            }
         }
 
         override fun onCharacteristicChanged(
@@ -260,11 +285,17 @@ class BleEmgDataSource(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            if (gatt === this@BleEmgDataSource.gatt) handlePayload(value)
+            onMain {
+                if (gatt === this@BleEmgDataSource.gatt) handlePayload(value)
+
+            }
         }
 
         override fun onReadRemoteRssi(gatt: BluetoothGatt, rssi: Int, status: Int) {
-            if (gatt === this@BleEmgDataSource.gatt && status == BluetoothGatt.GATT_SUCCESS) _rssi.value = rssi
+            onMain {
+                if (gatt === this@BleEmgDataSource.gatt && status == BluetoothGatt.GATT_SUCCESS) _rssi.value = rssi
+
+            }
         }
 
         override fun onDescriptorWrite(
@@ -272,23 +303,26 @@ class BleEmgDataSource(
             descriptor: BluetoothGattDescriptor,
             status: Int
         ) {
-            if (gatt !== this@BleEmgDataSource.gatt) return
-            if (descriptor.uuid != CLIENT_CONFIG_UUID) return
-            if (status != BluetoothGatt.GATT_SUCCESS) {
-                failConnection("Could not enable EMG notifications.")
-                return
-            }
-
-            _connectionState.value =
-                EmgConnectionState.Connected(selectedDeviceName)
-            handler.post(readRssi)
-
-            connectContinuation?.let { continuation ->
-                if (continuation.isActive) {
-                    continuation.resume(Unit)
+            onMain {
+                if (gatt !== this@BleEmgDataSource.gatt) return@onMain
+                if (descriptor.uuid != CLIENT_CONFIG_UUID) return@onMain
+                if (status != BluetoothGatt.GATT_SUCCESS) {
+                    failConnection("Could not enable EMG notifications.")
+                    return@onMain
                 }
+
+                _connectionState.value =
+                    EmgConnectionState.Connected(selectedDeviceName)
+                handler.post(readRssi)
+
+                connectContinuation?.let { continuation ->
+                    if (continuation.isActive) {
+                        continuation.resume(Unit)
+                    }
+                }
+                connectContinuation = null
+
             }
-            connectContinuation = null
         }
     }
 
@@ -365,6 +399,10 @@ class BleEmgDataSource(
         }
         connectContinuation = null
         closeGatt()
+    }
+
+    private fun onMain(action: () -> Unit) {
+        if (android.os.Looper.myLooper() == handler.looper) action() else handler.post { action() }
     }
 
     private fun closeGatt() {

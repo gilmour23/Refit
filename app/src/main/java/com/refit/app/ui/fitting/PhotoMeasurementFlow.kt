@@ -72,7 +72,7 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
         catch (e: Exception) { message = e.message ?: "측정하지 못했어요. 서버와 사진을 확인해 주세요." }
         finally { loading = false }
     }
-    BackHandler(enabled = !saving, onBack = onBack)
+    BackHandler { if (!saving) onBack() }
     val measured = result
     Page("사진 자동 측정", onBack = if (saving) null else onBack, footer = {
         if (measured != null) PrimaryAction(if (saving) "측정 결과 저장 중…" else "치수 등록하고 운동으로", {
@@ -85,7 +85,7 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
                 catch (_: Exception) { message = "측정 결과를 저장하지 못했어요. 다시 시도해 주세요." }
                 finally { saving = false }
             }
-        }, !saving && onRegister != null && (measured.warnings.isEmpty() || accepted))
+        }, !saving && report != null && onRegister != null && (measured.warnings.isEmpty() || accepted))
         else PrimaryAction(if (loading) "카드와 손을 분석하는 중…" else "사진 분석하기", {
             editServer = false; request++
         }, !loading && server.isNotBlank())
@@ -112,7 +112,7 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
             report?.let { image ->
                 Image(image.asImageBitmap(), "사진 위 측정 위치와 치수 보고서", Modifier.fillMaxWidth().height(380.dp))
                 TextButton({ zoom = true }) { Text("보고서 확대하기") }
-            } ?: Hint(if (measured.reportBase64 == null) "보고서 이미지가 없어 치수표만 표시합니다." else "보고서 이미지를 열 수 없어 치수표만 표시합니다.")
+            } ?: Hint(if (measured.reportBase64 == null) "보고서가 없어 측정 위치를 확인할 수 없어요. 다시 측정해 주세요." else "보고서 이미지를 열 수 없어요. 다시 측정해 주세요.")
             measured.dimensions.forEach { dimension ->
                 LabelValue("${dimension.id}. ${dimension.name}", "${dimension.valueMm} mm")
                 HorizontalDivider()

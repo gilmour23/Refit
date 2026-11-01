@@ -66,7 +66,7 @@ class BraceMeasurementTest {
 }
 
 /** Real loopback HTTP boundary; no Android/JDK http-server module is required. */
-private class TestHttpServer(private val status: Int, private val response: String) : AutoCloseable {
+internal class TestHttpServer(private val status: Int, private val response: String) : AutoCloseable {
     private val socket = ServerSocket(0)
     val port: Int get() = socket.localPort
     @Volatile var received = byteArrayOf()

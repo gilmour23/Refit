@@ -1,0 +1,108 @@
+{
+  "ok": true,
+  "message": null,
+  "session_id": "demo_1101",
+  "dims_mm": {
+    "1": 53.8,
+    "2": 33.2,
+    "3": 57.2,
+    "4": 38.8,
+    "5": 93.1,
+    "6": 43.4,
+    "7": 37.4,
+    "8": 93.5,
+    "9": 64.4,
+    "10": 34.9,
+    "11": 25.8
+  },
+  "dims": [
+    {
+      "id": 1,
+      "name": "0번에서 팔 쪽 4cm 폭",
+      "kind": "width",
+      "value_mm": 53.8
+    },
+    {
+      "id": 2,
+      "name": "① 위치 두께",
+      "kind": "thickness",
+      "value_mm": 33.2
+    },
+    {
+      "id": 3,
+      "name": "0번(손목) 폭",
+      "kind": "width",
+      "value_mm": 57.2
+    },
+    {
+      "id": 4,
+      "name": "③ 위치 두께",
+      "kind": "thickness",
+      "value_mm": 38.8
+    },
+    {
+      "id": 5,
+      "name": "18번 ↔ 0번 세로 거리",
+      "kind": "length",
+      "value_mm": 93.1
+    },
+    {
+      "id": 6,
+      "name": "2번 ↔ 0번 세로 거리",
+      "kind": "length",
+      "value_mm": 43.4
+    },
+    {
+      "id": 7,
+      "name": "5번 ↔ 2번 세로 거리",
+      "kind": "length",
+      "value_mm": 37.4
+    },
+    {
+      "id": 8,
+      "name": "2번 → 가로 → 새끼 쪽 손 테두리",
+      "kind": "width",
+      "value_mm": 93.5
+    },
+    {
+      "id": 9,
+      "name": "5번 → 가로 → 새끼 쪽 손 테두리",
+      "kind": "width",
+      "value_mm": 64.4
+    },
+    {
+      "id": 10,
+      "name": "2번 높이 두께 (측면)",
+      "kind": "thickness",
+      "value_mm": 34.9
+    },
+    {
+      "id": 11,
+      "name": "5번 높이 두께 (측면)",
+      "kind": "thickness",
+      "value_mm": 25.8
+    }
+  ],
+  "fixed_length_mm": 40.0,
+  "extras": {
+    "thickness_pos_from_wrist_mm": {
+      "10": 45.4,
+      "11": 84.5
+    }
+  },
+  "reference": {
+    "top": "card_tap",
+    "side": "card_tap"
+  },
+  "camera_height_mm": {
+    "top": 295,
+    "side": 330
+  },
+  "wrist_method": {
+    "top": "mediapipe",
+    "side": "mediapipe"
+  },
+  "warnings": [],
+  "report_url": "/brace_report/demo_1101",
+  "dims_csv_url": "/brace_dims/demo_1101"
+}
