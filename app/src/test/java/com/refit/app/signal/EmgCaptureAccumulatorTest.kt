@@ -19,6 +19,13 @@ class EmgCaptureAccumulatorTest {
         assertNull(capture.raw(null))
     }
 
+    @Test fun metadataMustMatchServerLimitsAndCannotInventInvalidRates() {
+        assertTrue(runCatching { EmgCaptureMetadata(Double.NaN, "emg", "raw") }.isFailure)
+        assertTrue(runCatching { EmgCaptureMetadata(0.0, "emg", "raw") }.isFailure)
+        assertTrue(runCatching { EmgCaptureMetadata(50.0, "x".repeat(81), "raw") }.isFailure)
+        assertTrue(runCatching { EmgCaptureMetadata(50.0, "emg", "x".repeat(41)) }.isFailure)
+    }
+
     @Test fun clearingDropsPreviousOwnerCapture() {
         val capture = EmgCaptureAccumulator()
         capture.add(8f)

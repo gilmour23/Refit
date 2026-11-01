@@ -11,6 +11,7 @@ data class BleEmgConfig(
     val sourceDevice: String? = null
 ) {
     init {
+        require(sourceDevice == null || sourceDevice.length <= 200)
         require(scanTimeoutMillis > 0L) {
             "scanTimeoutMillis must be greater than 0"
         }

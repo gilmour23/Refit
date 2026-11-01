@@ -69,7 +69,7 @@ fun PatientCenterScreen(
     revokeId?.let { id ->
         AlertDialog(onDismissRequest = { revokeId = null }, title = { Text("센터 연결을 해제할까요?") },
             text = { Text("센터의 기록 조회 권한과 이 센터 계획의 적용을 중단합니다. 내 운동 기록은 유지됩니다.") },
-            confirmButton = { TextButton({ onRevoke(id); revokeId = null }) { Text("연결 해제") } },
+            confirmButton = { TextButton({ onRevoke(id); revokeId = null }, enabled = !state.loading) { Text("연결 해제") } },
             dismissButton = { TextButton({ revokeId = null }) { Text("취소") } })
     }
 }

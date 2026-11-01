@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
 data class EmgCaptureMetadata(val sampleRateHz: Double, val channel: String, val unit: String) {
     init {
         require(sampleRateHz.isFinite() && sampleRateHz > 0 && sampleRateHz <= 100000)
-        require(channel.isNotBlank() && channel.length <= 120)
-        require(unit.isNotBlank() && unit.length <= 80)
+        require(channel.isNotBlank() && channel.length <= 80)
+        require(unit.isNotBlank() && unit.length <= 40)
     }
 }
 

@@ -238,7 +238,9 @@ private fun AuthenticatedApp(
             onAccept = centerViewModel::accept,
             onRevoke = { sessionViewModel.reconcileClinicianPlan(null); centerViewModel.revoke(it) },
             onApply = { plan ->
-                if (sessionViewModel.applyClinicianPlan(plan)) pageName = AppPage.HOME.name
+                centerViewModel.verifyPlan(plan.id) { verified ->
+                    if (sessionViewModel.applyClinicianPlan(verified)) pageName = AppPage.HOME.name
+                }
             },
             onBack = { pageName = AppPage.HOME.name }
         ) else { pageName = AppPage.HOME.name }

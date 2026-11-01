@@ -8,6 +8,8 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.time.LocalDate
 
 @Serializable data class CenterLinkDto(
@@ -18,8 +20,6 @@ import java.time.LocalDate
     @SerialName("revoked_at") val revokedAt: String? = null
 )
 @Serializable data class CenterNameDto(val id: String, val name: String)
-@Serializable private data class InviteParams(@SerialName("p_code") val code: String)
-@Serializable private data class RevokeParams(@SerialName("p_center_id") val centerId: String)
 @Serializable private data class RevokedCenterDto(
     @SerialName("center_id") val centerId: String,
     @SerialName("revoked_at") val revokedAt: String
@@ -30,9 +30,15 @@ data class PatientCenterSnapshot(
     val activePlan: ExercisePlanDto?
 )
 
+interface PatientCenterGateway {
+    suspend fun read(owner: String, today: LocalDate = LocalDate.now()): PatientCenterSnapshot
+    suspend fun acceptInvite(owner: String, code: String, consent: Boolean): CenterLinkDto
+    suspend fun revoke(owner: String, centerId: String)
+}
+
 class PatientCenterRemoteDataSource(
     private val client: SupabaseClient? = SupabaseClientProvider.clientOrNull()
-) {
+) : PatientCenterGateway {
     private fun ownedClient(owner: String): SupabaseClient {
         val c = requireNotNull(client) { "Cloud is not configured" }
         check((c.auth.sessionStatus.value as? SessionStatus.Authenticated)?.session?.user?.id == owner) {
@@ -41,7 +47,7 @@ class PatientCenterRemoteDataSource(
         return c
     }
 
-    suspend fun read(owner: String, today: LocalDate = LocalDate.now()): PatientCenterSnapshot {
+    override suspend fun read(owner: String, today: LocalDate): PatientCenterSnapshot {
         val c = ownedClient(owner)
         val links = c.from("center_patients").select {
             filter { eq("patient_id", owner) }
@@ -57,19 +63,19 @@ class PatientCenterRemoteDataSource(
         return PatientCenterSnapshot(links, centers, selectActiveWristPlan(plans, owner, today))
     }
 
-    suspend fun acceptInvite(owner: String, code: String, consent: Boolean): CenterLinkDto {
+    override suspend fun acceptInvite(owner: String, code: String, consent: Boolean): CenterLinkDto {
         require(consent) { "Patient consent is required" }
         val trimmed = code.trim()
         require(trimmed.isNotEmpty() && trimmed.length <= 256) { "Invalid invitation code" }
-        val link = ownedClient(owner).postgrest.rpc("accept_center_invite", InviteParams(trimmed))
+        val link = ownedClient(owner).postgrest.rpc("accept_center_invite", buildJsonObject { put("p_code", trimmed) })
             .decodeAs<CenterLinkDto>()
         check(link.patientId == owner) { "Invitation owner mismatch" }
         ownedClient(owner)
         return link
     }
 
-    suspend fun revoke(owner: String, centerId: String) {
-        ownedClient(owner).postgrest.rpc("revoke_center_link", RevokeParams(centerId))
+    override suspend fun revoke(owner: String, centerId: String) {
+        ownedClient(owner).postgrest.rpc("revoke_center_link", buildJsonObject { put("p_center_id", centerId) })
             .decodeAs<RevokedCenterDto>().also { check(it.centerId == centerId) }
         ownedClient(owner)
     }
