@@ -18,7 +18,7 @@ import com.refit.app.ui.result.SignalDetails
 
 @Composable
 fun HistoryScreen(sessions: List<RehabSessionEntity>, onBack: () -> Unit, isSyncing: Boolean,
-                  syncMessage: String?, onRetrySync: () -> Unit) {
+                  syncMessage: String?, onRetrySync: () -> Unit, cloudSyncEnabled: Boolean = true) {
     var selectedId by rememberSaveable { mutableStateOf<Long?>(null) }
     val selected = sessions.firstOrNull { it.id == selectedId }
     if (selected != null) {
@@ -29,11 +29,12 @@ fun HistoryScreen(sessions: List<RehabSessionEntity>, onBack: () -> Unit, isSync
     BackHandler(onBack = onBack)
     val pending = sessions.count { it.syncStatus != SyncStatus.SYNCED }
     Page("운동 기록", footer = { BottomTabs("history", onBack, {}) }) {
+        if (!cloudSyncEnabled) Hint("이 기기에 저장된 데모 기록입니다.")
         if (sessions.isEmpty()) Panel {
             Text("아직 운동 기록이 없어요", style = MaterialTheme.typography.titleMedium)
             PrimaryAction("홈으로 돌아가기", onBack)
         }
-        if (pending > 0) Panel {
+        if (cloudSyncEnabled && pending > 0) Panel {
             Text("동기화 대기 ${pending}개", fontWeight = FontWeight.SemiBold)
             SecondaryAction(if (isSyncing) "동기화 중…" else "다시 동기화", onRetrySync, !isSyncing)
             syncMessage?.let { Hint(it) }
@@ -90,4 +91,5 @@ fun HistoryDetailScreen(session: RehabSessionEntity, onBack: () -> Unit) {
         if (details) SignalDetails(session.rms, session.mav, session.peakActivation, session.sampleCount, session.dataMode)
     }
 }
+
 

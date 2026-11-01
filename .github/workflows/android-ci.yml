@@ -43,6 +43,12 @@ jobs:
           packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
           log-accepted-android-sdk-licenses: false
 
+      - name: Verify offline demo without backend configuration
+        run: |
+          printf 'SUPABASE_URL=\nSUPABASE_PUBLISHABLE_KEY=\n' > local.properties
+          ./gradlew :app:testDebugUnitTest --tests '*OfflineDemoLaunchTest' -Pkotlin.incremental=false --stacktrace
+          cp -r app/build/reports/tests/testDebugUnitTest app/build/reports/tests/offline-demo
+
       - name: Unit tests, lint, and debug build
         run: |
           # Keep tests independent of whether a developer has configured the app.
@@ -57,6 +63,7 @@ jobs:
           name: refit-unit-test-reports
           path: |
             app/build/reports/tests/testDebugUnitTest
+            app/build/reports/tests/offline-demo
             app/build/reports/lint-results-debug.*
             app/build/outputs/patient-screens/*.png
 

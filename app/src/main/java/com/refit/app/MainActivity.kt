@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.ViewModelStoreOwner
 import com.refit.app.auth.AuthState
 import com.refit.app.ui.auth.AuthViewModel
@@ -41,6 +42,8 @@ import com.refit.app.ui.session.SessionViewModelFactory
 import com.refit.app.ui.session.GuideSettingsScreen
 import com.refit.app.ui.components.ReFitTheme
 import androidx.activity.compose.BackHandler
+
+private const val LOCAL_DEMO_OWNER = "__offline_demo_v1__"
 
 private enum class AppPage {
     HOME,
@@ -65,6 +68,20 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun ReFitRoot() {
+    // A local demonstration has its own owner and never creates an auth session.
+    // With no backend configuration, the remote data source also has no client.
+    if (!com.refit.app.data.remote.SupabaseClientProvider.isConfigured) {
+        val demoOwner = requireNotNull(LocalViewModelStoreOwner.current)
+        key(LOCAL_DEMO_OWNER) {
+            CheckedAuthenticatedApp(
+                auth = AuthState.Authenticated(LOCAL_DEMO_OWNER, null),
+                accountOwner = demoOwner,
+                onSignOut = null
+            )
+        }
+        return
+    }
+
     val authViewModel: AuthViewModel = viewModel()
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
     val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
@@ -110,7 +127,7 @@ private fun ReFitRoot() {
 }
 
 @Composable
-private fun CheckedAuthenticatedApp(auth: AuthState.Authenticated, accountOwner: ViewModelStoreOwner, onSignOut: () -> Unit) {
+private fun CheckedAuthenticatedApp(auth: AuthState.Authenticated, accountOwner: ViewModelStoreOwner, onSignOut: (() -> Unit)?) {
     val context = LocalContext.current.applicationContext
     val storage by produceState<Result<Unit>?>(null, auth.userId) {
         value = withContext(Dispatchers.IO) {
@@ -121,7 +138,7 @@ private fun CheckedAuthenticatedApp(auth: AuthState.Authenticated, accountOwner:
         storage == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         storage!!.isFailure -> Page("저장된 기록을 열 수 없어요") {
             Text("기록은 지우지 않았습니다. 앱을 삭제하지 말고 관리자에게 문의해 주세요.")
-            PrimaryAction("로그아웃", onSignOut)
+            onSignOut?.let { PrimaryAction("로그아웃", it) }
         }
         else -> AuthenticatedApp(auth, accountOwner, onSignOut)
     }
@@ -131,7 +148,7 @@ private fun CheckedAuthenticatedApp(auth: AuthState.Authenticated, accountOwner:
 private fun AuthenticatedApp(
     auth: AuthState.Authenticated,
     accountOwner: ViewModelStoreOwner,
-    onSignOut: () -> Unit
+    onSignOut: (() -> Unit)?
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
@@ -199,6 +216,7 @@ private fun AuthenticatedApp(
                 isSyncing = sessionState.isSyncing,
                 syncMessage = sessionState.syncMessage,
                 onRetrySync = sessionViewModel::retrySync,
+                cloudSyncEnabled = onSignOut != null,
                 onBack = {
                     pageName = AppPage.HOME.name
                 }
@@ -206,3 +224,4 @@ private fun AuthenticatedApp(
         }
     }
 }
+
