@@ -87,7 +87,7 @@ class FittingDemoTest {
         compose.onNodeWithText("새 보조기 제작").assertIsDisplayed().performClick()
         assertEquals(1, creation)
         capture("26-registered-brace")
-        compose.onNodeWithText("재활 홈으로").performClick()
+        compose.onNodeWithText("홈").performClick()
         assertEquals(1, home)
     }
 
