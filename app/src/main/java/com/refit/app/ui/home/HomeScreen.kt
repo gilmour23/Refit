@@ -15,11 +15,14 @@ import com.refit.app.ui.session.WristIllustration
 @Composable
 fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                sessions: List<RehabSessionEntity> = emptyList(), wristSide: String? = null, guideDescription: String = "시도 4초 · 휴식 6초 · 3회",
-               onConfigure: () -> Unit = {}, onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: () -> Unit) {
+               onConfigure: () -> Unit = {}, onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: (() -> Unit)?) {
     var showAccount by remember { mutableStateOf(false) }
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 720 || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f
-    Page("오늘의 손목 운동", topAction = { TextButton({ showAccount = true }) { Text("계정") } },
+    Page("오늘의 손목 운동", topAction = {
+        if (onSignOut != null) TextButton({ showAccount = true }) { Text("계정") }
+    },
         footer = { BottomTabs("home", {}, onOpenHistory) }) {
+        if (onSignOut == null) Hint("로그인 없이 체험 중 · 기록은 이 기기에만 저장됩니다.")
         if (!compact) Hint("차근차근, 오늘도 함께해요.")
         if (sessionRefreshPending) Hint("계정 연결을 복구 중입니다. 기록은 이 기기에 저장됩니다.")
         Panel(color = AccentSurface) {
@@ -48,9 +51,10 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
             }
         }
     }
-    if (showAccount) AlertDialog(onDismissRequest = { showAccount = false }, title = { Text("내 계정") },
+    if (showAccount && onSignOut != null) AlertDialog(onDismissRequest = { showAccount = false }, title = { Text("내 계정") },
         text = { Text(email ?: "로그인한 계정") },
         confirmButton = { TextButton(onSignOut) { Text("로그아웃") } },
         dismissButton = { TextButton({ showAccount = false }) { Text("닫기") } })
 }
+
 
