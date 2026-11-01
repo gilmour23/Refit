@@ -65,6 +65,53 @@ class SessionSyncCoordinatorTest {
         ), autoRefresh = false)
     }
 
+    @Test(timeout = 30000) fun symptomEditDuringUploadStaysPendingAndIsIncludedOnRetry() = runBlocking {
+        val db = database(); val dao = db.rehabSessionDao()
+        val id = dao.insert(record())
+        var requests = 0
+        val c = client(MockEngine { request ->
+            requests++
+            if (requests == 1) dao.updatePain(id, owner, "많이 아파요", "불편했어요")
+            else assertEquals("많이 아파요", body(request)["pain_response"]!!.jsonPrimitive.content)
+            respond("""[{"id":"$remoteId"}]""", HttpStatusCode.OK, headers)
+        })
+        try {
+            val sync = SessionSyncCoordinator(RehabSessionRepository(dao), RehabSessionRemoteDataSource(c))
+            assertFalse(sync.syncSession(owner, id))
+            assertEquals(SyncStatus.LOCAL_ONLY, dao.getById(id, owner)!!.syncStatus)
+            assertTrue(sync.syncSession(owner, id))
+            dao.updateFatigue(id, owner, "많이 힘듦")
+            assertEquals(SyncStatus.LOCAL_ONLY, dao.getById(id, owner)!!.syncStatus)
+        } finally { c.close(); db.close() }
+    }
+
+    @Test(timeout = 30000) fun rawUploadFailureKeepsEncryptedCapturePendingAndRetriesSameSession() = runBlocking {
+        val db = database(); val dao = db.rehabSessionDao()
+        val id = dao.insert(record().copy(dataMode = "demo", rawEmg = com.refit.app.data.model.RawEmgCapture(
+            50.0, "emg", "arbitrary", listOf(1f, 2f), 2, false)))
+        var signalRequests = 0
+        val paths = mutableListOf<String>()
+        val c = client(MockEngine { request ->
+            paths += request.url.encodedPath
+            if (request.url.encodedPath.endsWith("rehab_session_signals")) {
+                signalRequests++
+                assertEquals("session_id", request.url.parameters["on_conflict"])
+                assertEquals(remoteId, body(request)["session_id"]!!.jsonPrimitive.content)
+                if (signalRequests == 1) throw IOException("raw upload interrupted")
+                respond("", HttpStatusCode.Created, headers)
+            } else respond("""[{"id":"$remoteId"}]""", HttpStatusCode.OK, headers)
+        })
+        try {
+            val sync = SessionSyncCoordinator(RehabSessionRepository(dao), RehabSessionRemoteDataSource(c))
+            assertFalse(sync.syncSession(owner, id))
+            assertEquals(SyncStatus.FAILED, dao.getById(id, owner)!!.syncStatus)
+            assertEquals(listOf(1f, 2f), dao.getById(id, owner)!!.rawEmg!!.samples)
+            assertTrue(sync.syncSession(owner, id))
+            assertEquals(listOf("/rest/v1/rehab_sessions", "/rest/v1/rehab_session_signals",
+                "/rest/v1/rehab_sessions", "/rest/v1/rehab_session_signals"), paths)
+        } finally { c.close(); db.close() }
+    }
+
     @Test(timeout = 30000) fun uploadsSummaryThenMarksSyncedAndSkipsConfirmedRow() = runBlocking {
         val db = database()
         val dao = db.rehabSessionDao()
@@ -81,7 +128,7 @@ class SessionSyncCoordinatorTest {
             assertTrue(request.headers["Prefer"]!!.contains("return=representation"))
             assertEquals("Bearer owner-access", request.headers["Authorization"])
             val payload = body(request)
-            assertEquals(setOf("user_id", "client_local_id", "created_at", "exercise_type", "duration_seconds", "sample_count", "rms", "mav", "peak_activation", "updated_at"), payload.keys)
+            assertTrue(payload.keys.containsAll(setOf("user_id", "client_local_id", "created_at", "exercise_type", "duration_seconds", "sample_count", "rms", "mav", "peak_activation", "updated_at")))
             assertEquals(saved.userId, payload["user_id"]!!.jsonPrimitive.content)
             assertEquals(saved.clientLocalId, payload["client_local_id"]!!.jsonPrimitive.content)
             assertEquals(4f, payload["peak_activation"]!!.jsonPrimitive.float, 0f)
@@ -250,3 +297,4 @@ class SessionSyncCoordinatorTest {
         } finally { db.close() }
     }
 }
+

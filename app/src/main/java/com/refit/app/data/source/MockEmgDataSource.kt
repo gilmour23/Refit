@@ -12,6 +12,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 class MockEmgDataSource : EmgDataSource {
+    override val captureMetadata = com.refit.app.data.model.EmgCaptureMetadata(50.0, "mock_emg", "arbitrary")
+    override val sourceDevice = "ReFit simulated EMG"
 
     private var connected = false
 
@@ -57,4 +59,5 @@ class MockEmgDataSource : EmgDataSource {
         }
     }
 }
+
 

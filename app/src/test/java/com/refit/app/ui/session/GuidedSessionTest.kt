@@ -386,6 +386,96 @@ class GuidedSessionTest {
         } finally { store.clear(); db.close(); Dispatchers.resetMain() }
     }
 
+    @Test fun clinicianPlanRequiresExplicitApplyAndRevocationRestoresManualTiming() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val db = Room.inMemoryDatabaseBuilder(app, ReFitDatabase::class.java).build()
+        val repo = RehabSessionRepository(db.rehabSessionDao()); val store = ViewModelStore()
+        try {
+            val vm = SessionViewModel(app, "plan-owner", Source(), repository = repo,
+                syncCoordinator = SessionSyncCoordinator(repo, RehabSessionRemoteDataSource(null)))
+            store.put("session", vm)
+            vm.configureGuidance(4, 6, 3)
+            val today = java.time.LocalDate.now()
+            val plan = com.refit.app.data.remote.ExercisePlanDto("p", "center", "plan-owner", "author",
+                "wrist_extension", today.toString(), null, listOf(today.dayOfWeek.value), 5, 8, 10, 1,
+                "안내", today.toString() + "T00:00:00Z")
+            assertEquals(GuideTiming(4, 6, 3), vm.uiState.value.guideTiming)
+            assertFalse(vm.applyClinicianPlan(plan.copy(patientId = "other")))
+            assertTrue(vm.applyClinicianPlan(plan))
+            assertEquals(GuideTiming(8, 10, 5), vm.uiState.value.guideTiming)
+            assertEquals("p", vm.uiState.value.appliedPlan!!.id)
+            vm.reconcileClinicianPlan(null)
+            assertNull(vm.uiState.value.appliedPlan)
+            assertEquals(GuideTiming(4, 6, 3), vm.uiState.value.guideTiming)
+            vm.applyClinicianPlan(plan)
+            assertTrue(vm.configureGuidance(3, 5, 2))
+            assertNull(vm.uiState.value.appliedPlan)
+        } finally { store.clear(); db.close(); Dispatchers.resetMain() }
+    }
+
+    @Test fun planVerificationCannotEraseABackgroundPauseAndRevokedPlanCannotStart() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val db = Room.inMemoryDatabaseBuilder(app, ReFitDatabase::class.java).build()
+        val repo = RehabSessionRepository(db.rehabSessionDao()); val store = ViewModelStore()
+        val today = java.time.LocalDate.now()
+        val plan = com.refit.app.data.remote.ExercisePlanDto("p", "center", "verify-owner", "author",
+            "wrist_extension", today.toString(), null, listOf(today.dayOfWeek.value), 5, 8, 10, 1,
+            "안내", today.toString() + "T00:00:00Z")
+        val response = CompletableDeferred<com.refit.app.data.remote.PatientCenterSnapshot>()
+        val gateway = object : com.refit.app.data.remote.PatientCenterGateway {
+            override suspend fun read(owner: String, today: java.time.LocalDate) = response.await()
+            override suspend fun acceptInvite(owner: String, code: String, consent: Boolean): com.refit.app.data.remote.CenterLinkDto = error("unused")
+            override suspend fun revoke(owner: String, centerId: String) = error("unused")
+        }
+        try {
+            var connections = 0
+            val vm = SessionViewModel(app, "verify-owner", Source(onConnect = { connections++ }), repository = repo,
+                syncCoordinator = SessionSyncCoordinator(repo, RehabSessionRemoteDataSource(null)), centerRemote = gateway)
+            store.put("verify", vm); vm.configureWristSide("left"); vm.applyClinicianPlan(plan)
+            vm.startSession(); assertTrue(vm.uiState.value.isConnecting)
+            vm.setPaused(true)
+            response.complete(com.refit.app.data.remote.PatientCenterSnapshot(emptyList(), emptyList(), plan))
+            runCurrent()
+            assertEquals(1, connections)
+            assertTrue(vm.uiState.value.running)
+            assertTrue(vm.uiState.value.paused)
+            assertEquals(0L, vm.uiState.value.elapsedSeconds)
+
+            val revoked = object : com.refit.app.data.remote.PatientCenterGateway {
+                override suspend fun read(owner: String, today: java.time.LocalDate) =
+                    com.refit.app.data.remote.PatientCenterSnapshot(emptyList(), emptyList(), null)
+                override suspend fun acceptInvite(owner: String, code: String, consent: Boolean): com.refit.app.data.remote.CenterLinkDto = error("unused")
+                override suspend fun revoke(owner: String, centerId: String) = error("unused")
+            }
+            val other = SessionViewModel(app, "verify-owner", Source(onConnect = { connections++ }), repository = repo,
+                syncCoordinator = SessionSyncCoordinator(repo, RehabSessionRemoteDataSource(null)), centerRemote = revoked)
+            store.put("revoked", other); other.configureWristSide("left"); other.configureGuidance(4, 6, 3)
+            other.applyClinicianPlan(plan); other.startSession(); runCurrent()
+            assertFalse(other.uiState.value.running)
+            assertFalse(other.uiState.value.isConnecting)
+            assertNull(other.uiState.value.appliedPlan)
+            assertEquals(GuideTiming(4, 6, 3), other.uiState.value.guideTiming)
+            assertEquals(1, connections)
+            val staleResponse = CompletableDeferred<com.refit.app.data.remote.PatientCenterSnapshot>()
+            val staleGateway = object : com.refit.app.data.remote.PatientCenterGateway {
+                override suspend fun read(owner: String, today: java.time.LocalDate) = staleResponse.await()
+                override suspend fun acceptInvite(owner: String, code: String, consent: Boolean): com.refit.app.data.remote.CenterLinkDto = error("unused")
+                override suspend fun revoke(owner: String, centerId: String) = error("unused")
+            }
+            val invalidated = SessionViewModel(app, "verify-owner", Source(onConnect = { connections++ }), repository = repo,
+                syncCoordinator = SessionSyncCoordinator(repo, RehabSessionRemoteDataSource(null)), centerRemote = staleGateway)
+            store.put("invalidated", invalidated); invalidated.configureWristSide("left")
+            invalidated.applyClinicianPlan(plan); invalidated.startSession()
+            invalidated.reconcileClinicianPlan(null)
+            staleResponse.complete(com.refit.app.data.remote.PatientCenterSnapshot(emptyList(), emptyList(), plan))
+            runCurrent()
+            assertFalse(invalidated.uiState.value.running)
+            assertEquals(1, connections)
+        } finally { store.clear(); db.close(); Dispatchers.resetMain() }
+    }
+
     private class Source(private val seedOnConnect: Boolean = true, private val onConnect: suspend () -> Unit = {}) : EmgDataSource {
         override val connectionState = MutableStateFlow<EmgConnectionState>(EmgConnectionState.Disconnected)
         val samples = MutableSharedFlow<EmgSample>(replay = 1)
@@ -394,3 +484,4 @@ class GuidedSessionTest {
         override fun observeEmg() = samples
     }
 }
+

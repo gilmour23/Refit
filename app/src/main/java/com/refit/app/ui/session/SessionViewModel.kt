@@ -13,7 +13,6 @@ import com.refit.app.data.repository.RehabSessionRepository
 import com.refit.app.data.repository.SessionSyncCoordinator
 import com.refit.app.data.source.EmgDataSource
 import com.refit.app.data.source.MockEmgDataSource
-import com.refit.app.signal.EmgSignalProcessor
 import com.refit.app.signal.RealtimeEmgWindow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -38,6 +37,7 @@ data class SessionUiState(
     val paused: Boolean = false,
     val dataMode: String = "demo",
     val guideTiming: GuideTiming = GuideTiming(),
+    val appliedPlan: com.refit.app.data.remote.ExercisePlanDto? = null,
     val completedAttempts: Int = 0,
     val phase: GuidePhase = GuidePhase.READY,
     val wristSide: String? = null,
@@ -65,9 +65,11 @@ class SessionViewModel(
     private val repository: RehabSessionRepository = RehabSessionRepository(
         ReFitDatabase.getInstance(application).rehabSessionDao()
     ),
-    private val syncCoordinator: SessionSyncCoordinator = SessionSyncCoordinator(repository)
+    private val syncCoordinator: SessionSyncCoordinator = SessionSyncCoordinator(repository),
+    private val centerRemote: com.refit.app.data.remote.PatientCenterGateway? = null
 ) : AndroidViewModel(application) {
     private val realtimeWindow = RealtimeEmgWindow(realtimeWindowSize)
+    private val patientCenter by lazy { centerRemote ?: com.refit.app.data.remote.PatientCenterRemoteDataSource() }
 
     private val preferences = application.getSharedPreferences("guide-$userId", android.content.Context.MODE_PRIVATE)
     private val initialTiming = runCatching { GuideTiming(preferences.getInt("attempt", 4),
@@ -80,14 +82,16 @@ class SessionViewModel(
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
 
     private var emgJob: Job? = null
+    private var planVerificationJob: Job? = null
     private var timerJob: Job? = null
     private var syncJob: Job? = null
     private var syncRequested = false
+    private var restoreManualAfterSession = false
     private var lastSampleAt: Long? = null
     private var connectedAt = 0L
     private var sensorWatchJob: Job? = null
 
-    private val sessionSamples = mutableListOf<Float>()
+    private val sessionCapture = com.refit.app.signal.EmgCaptureAccumulator()
 
     init {
         sensorWatchJob = viewModelScope.launch {
@@ -158,9 +162,32 @@ class SessionViewModel(
     fun configureGuidance(attemptSeconds: Int, restSeconds: Int, attempts: Int): Boolean {
         if (_uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return false
         val timing = runCatching { GuideTiming(attemptSeconds, restSeconds, attempts) }.getOrNull() ?: return false
+        restoreManualAfterSession = false
         preferences.edit().putInt("attempt", attemptSeconds).putInt("rest", restSeconds).putInt("count", attempts).apply()
-        _uiState.update { it.copy(guideTiming = timing, phaseSecondsRemaining = timing.attemptSeconds) }
+        _uiState.update { it.copy(guideTiming = timing, appliedPlan = null, phaseSecondsRemaining = timing.attemptSeconds) }
         return true
+    }
+
+    fun applyClinicianPlan(plan: com.refit.app.data.remote.ExercisePlanDto): Boolean {
+        val state = _uiState.value
+        if (state.running || state.isConnecting || state.isSaving ||
+            !plan.isActiveFor(userId, java.time.LocalDate.now())) return false
+        val timing = plan.timingOrNull() ?: return false
+        restoreManualAfterSession = false
+        _uiState.update { it.copy(guideTiming = timing, appliedPlan = plan,
+            phaseSecondsRemaining = timing.attemptSeconds) }
+        return true
+    }
+
+    fun reconcileClinicianPlan(activePlanId: String?) {
+        val state = _uiState.value
+        if (state.appliedPlan != null && state.appliedPlan.id != activePlanId) {
+            val manual = runCatching { GuideTiming(preferences.getInt("attempt", 4),
+                preferences.getInt("rest", 6), preferences.getInt("count", 3)) }.getOrDefault(GuideTiming())
+            restoreManualAfterSession = state.running || state.isConnecting || state.isSaving
+            _uiState.update { it.copy(appliedPlan = null,
+                guideTiming = if (it.running || it.isConnecting || it.isSaving) it.guideTiming else manual) }
+        }
     }
 
     fun configureWristSide(side: String): Boolean {
@@ -175,16 +202,54 @@ class SessionViewModel(
         _uiState.update { it.copy(voiceEnabled = enabled) }
     }
 
+    private fun restoreManualGuidanceIfNeeded() {
+        if (restoreManualAfterSession && !_uiState.value.running && !_uiState.value.isConnecting && !_uiState.value.isSaving) {
+            val manual = runCatching { GuideTiming(preferences.getInt("attempt", 4),
+                preferences.getInt("rest", 6), preferences.getInt("count", 3)) }.getOrDefault(GuideTiming())
+            _uiState.update { it.copy(guideTiming = manual) }
+            restoreManualAfterSession = false
+        }
+    }
+
     fun startSession() {
+        val current = _uiState.value
+        if (current.running || current.isConnecting || current.isSaving) return
+        _uiState.update { it.copy(paused = false) }
+        val selected = current.appliedPlan
+        if (selected == null) { startVerifiedSession(); return }
+        _uiState.update { it.copy(isConnecting = true, message = "센터 계획을 확인하고 있어요.") }
+        planVerificationJob = viewModelScope.launch {
+            val active = try { patientCenter.read(userId).activePlan }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { null }
+            _uiState.update { it.copy(isConnecting = false) }
+            if (active?.id != selected.id || _uiState.value.appliedPlan?.id != selected.id) {
+                reconcileClinicianPlan(null)
+                restoreManualGuidanceIfNeeded()
+                _uiState.update { it.copy(message = "센터 연결과 오늘의 계획을 다시 확인해 주세요. 현재 안내는 직접 설정한 시간으로 돌아왔어요.") }
+            } else startVerifiedSession()
+        }
+    }
+
+    private fun startVerifiedSession() {
+        restoreManualGuidanceIfNeeded()
+        _uiState.value.appliedPlan?.let {
+            if (!it.isActiveFor(userId, java.time.LocalDate.now())) {
+                reconcileClinicianPlan(null)
+                restoreManualGuidanceIfNeeded()
+                _uiState.update { state -> state.copy(message = "계획 적용 날짜가 바뀌었어요. 오늘의 계획을 다시 확인해 주세요.") }
+                return
+            }
+        }
         if (!_uiState.value.storageAvailable) return
         if (_uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return
         if (_uiState.value.wristSide == null) {
             _uiState.update { it.copy(message = "운동할 손목을 선택하세요.") }
             return
         }
-        sessionSamples.clear()
+        sessionCapture.clear()
         realtimeWindow.clear()
-        _uiState.update { it.copy(isConnecting = true, result = null, message = null, paused = false,
+        _uiState.update { it.copy(isConnecting = true, result = null, message = null,
             signalStatus = if (dataMode == "demo") SignalStatus.DEMO else SignalStatus.WAITING, restHeld = false) }
         connectAndCollect(newSession = true)
     }
@@ -216,7 +281,7 @@ class SessionViewModel(
                     lastSampleAt = SystemClock.elapsedRealtime()
                     _uiState.update { it.copy(signalStatus = if (dataMode == "demo") SignalStatus.DEMO else SignalStatus.RECEIVING) }
                     if (_uiState.value.paused || _uiState.value.phase == GuidePhase.READY) return@collect
-                    sessionSamples += sample.value
+                    sessionCapture.add(sample.value)
                     _uiState.update { it.copy(samples = (it.samples + sample.value).takeLast(200),
                         currentActivation = realtimeWindow.add(sample.value)) }
                 }
@@ -289,16 +354,19 @@ class SessionViewModel(
     fun stopSession() {
         val state = _uiState.value
         if (!state.running) return
-        val samplesSnapshot = sessionSamples.toList()
+        val sampleCount = sessionCapture.sampleCount
+        val rms = sessionCapture.rms
+        val mav = sessionCapture.mav
+        val peak = sessionCapture.peak
+        val rawCapture = sessionCapture.raw(dataSource.captureMetadata)
         val createdAt = System.currentTimeMillis()
         emgJob?.cancel()
         timerJob?.cancel()
         _uiState.update { it.copy(connected = false, running = false, paused = false, isSaving = true) }
         viewModelScope.launch {
             runCatching { dataSource.disconnect() }
-            val result = RehabSessionResult(durationSeconds = state.elapsedSeconds, sampleCount = samplesSnapshot.size,
-                rms = EmgSignalProcessor.rms(samplesSnapshot), mav = EmgSignalProcessor.mav(samplesSnapshot),
-                peakActivation = EmgSignalProcessor.peakMagnitude(samplesSnapshot),
+            val result = RehabSessionResult(durationSeconds = state.elapsedSeconds, sampleCount = sampleCount,
+                rms = rms, mav = mav, peakActivation = peak,
                 completedAttempts = state.completedAttempts, plannedAttempts = state.guideTiming.attempts,
                 attemptSeconds = state.guideTiming.attemptSeconds, restSeconds = state.guideTiming.restSeconds,
                 endedEarly = state.elapsedSeconds < state.guideTiming.totalSeconds, dataMode = dataMode, wristSide = state.wristSide)
@@ -309,12 +377,16 @@ class SessionViewModel(
                     mav = result.mav, peakActivation = result.peakActivation, syncStatus = SyncStatus.LOCAL_ONLY,
                     updatedAt = createdAt, completedAttempts = result.completedAttempts, plannedAttempts = result.plannedAttempts,
                     attemptSeconds = result.attemptSeconds, restSeconds = result.restSeconds, endedEarly = result.endedEarly,
-                    dataMode = dataMode, wristSide = state.wristSide))
+                    dataMode = dataMode, wristSide = state.wristSide,
+                    sourceDevice = dataSource.sourceDevice, sourceAppVersion = com.refit.app.BuildConfig.VERSION_NAME,
+                    rawEmg = rawCapture))
                 _uiState.update { it.copy(result = result.copy(savedSessionId = id), isSaving = false) }
+                restoreManualGuidanceIfNeeded()
                 retrySync()
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) {
                 _uiState.update { it.copy(result = result, isSaving = false, message = "기록을 저장하지 못했습니다.") }
+                restoreManualGuidanceIfNeeded()
             }
         }
     }
@@ -327,6 +399,7 @@ class SessionViewModel(
             try {
                 repository.updateComfort(id, userId, comfort)
                 _uiState.update { it.copy(result = it.result?.copy(comfort = comfort)) }
+                retrySync()
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { _uiState.update { it.copy(message = "운동 후 상태를 저장하지 못했습니다.") } }
         }
@@ -344,6 +417,7 @@ class SessionViewModel(
                 _uiState.update { state -> state.copy(result = state.result?.copy(
                     pain = pain ?: state.result.pain, fatigue = fatigue ?: state.result.fatigue,
                     comfort = if (pain != null) comfort else state.result.comfort)) }
+                retrySync()
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { _uiState.update { it.copy(message = "운동 후 상태를 저장하지 못했어요.") } }
         }
@@ -364,13 +438,15 @@ class SessionViewModel(
     }
 
     fun resetSession() {
-        sessionSamples.clear()
+        restoreManualGuidanceIfNeeded()
+        sessionCapture.clear()
         realtimeWindow.clear()
         _uiState.value = SessionUiState(
             history = _uiState.value.history,
             isSyncing = _uiState.value.isSyncing,
             syncMessage = _uiState.value.syncMessage,
             guideTiming = _uiState.value.guideTiming,
+            appliedPlan = _uiState.value.appliedPlan,
             phaseSecondsRemaining = 3,
             wristSide = _uiState.value.wristSide, voiceEnabled = _uiState.value.voiceEnabled,
             dataMode = dataMode
@@ -378,10 +454,11 @@ class SessionViewModel(
     }
 
     override fun onCleared() {
+        planVerificationJob?.cancel()
         emgJob?.cancel()
         timerJob?.cancel()
         sensorWatchJob?.cancel()
-        sessionSamples.clear()
+        sessionCapture.clear()
         realtimeWindow.clear()
         _uiState.value = SessionUiState()
         // viewModelScope has already been cancelled at this point. A separate
@@ -393,3 +470,4 @@ class SessionViewModel(
         super.onCleared()
     }
 }
+

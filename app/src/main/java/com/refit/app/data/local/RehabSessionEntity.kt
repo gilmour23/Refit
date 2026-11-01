@@ -41,5 +41,9 @@ data class RehabSessionEntity(
     val comfort: String? = null,
     val wristSide: String? = null,
     val pain: String? = null,
-    val fatigue: String? = null
+    val fatigue: String? = null,
+    val sourceDevice: String? = null,
+    val sourceAppVersion: String? = null,
+    val rawEmg: com.refit.app.data.model.RawEmgCapture? = null
 )
+

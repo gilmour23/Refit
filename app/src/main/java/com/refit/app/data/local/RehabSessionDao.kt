@@ -40,15 +40,28 @@ interface RehabSessionDao {
             .sortedWith(compareBy<RehabSessionEntity> { it.createdAt }.thenBy { it.id })
 
     @Transaction suspend fun updatePain(localId: Long, userId: String, pain: String, comfort: String) {
-        getById(localId, userId)?.let { updateRow(localId, EncryptedSessionRow.ownerTag(userId), it.copy(pain = pain, comfort = comfort)) }
+        getById(localId, userId)?.let { updateRow(localId, EncryptedSessionRow.ownerTag(userId), it.copy(pain = pain, comfort = comfort).edited()) }
     }
     @Transaction suspend fun updateFatigue(localId: Long, userId: String, fatigue: String) {
-        getById(localId, userId)?.let { updateRow(localId, EncryptedSessionRow.ownerTag(userId), it.copy(fatigue = fatigue)) }
+        getById(localId, userId)?.let { updateRow(localId, EncryptedSessionRow.ownerTag(userId), it.copy(fatigue = fatigue).edited()) }
     }
     @Transaction suspend fun updateComfort(localId: Long, userId: String, comfort: String) {
-        getById(localId, userId)?.let { updateRow(localId, EncryptedSessionRow.ownerTag(userId), it.copy(comfort = comfort)) }
+        getById(localId, userId)?.let { updateRow(localId, EncryptedSessionRow.ownerTag(userId), it.copy(comfort = comfort).edited()) }
     }
+    @Transaction suspend fun markSyncedIfUnchanged(localId: Long, userId: String, expectedUpdatedAt: Long, remoteId: String): Boolean {
+        val current = getById(localId, userId) ?: return false
+        val unchanged = current.updatedAt == expectedUpdatedAt
+        updateRow(localId, EncryptedSessionRow.ownerTag(userId), current.copy(
+            syncStatus = if (unchanged) SyncStatus.SYNCED else SyncStatus.LOCAL_ONLY,
+            remoteId = remoteId))
+        return unchanged
+    }
+
     @Transaction suspend fun updateSyncState(localId: Long, status: SyncStatus, remoteId: String?, userId: String) {
         getById(localId, userId)?.let { updateRow(localId, EncryptedSessionRow.ownerTag(userId), it.copy(syncStatus = status, remoteId = remoteId)) }
     }
 }
+
+
+private fun RehabSessionEntity.edited() = copy(syncStatus = SyncStatus.LOCAL_ONLY,
+    updatedAt = maxOf(System.currentTimeMillis(), updatedAt + 1))

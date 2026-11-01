@@ -37,6 +37,9 @@ class BleEmgDataSource(
     private val packetParser: EmgPacketParser
 ) : EmgDataSource {
 
+    override val captureMetadata get() = config.captureMetadata
+    override val sourceDevice get() = config.sourceDevice
+
     private val appContext = context.applicationContext
     private val bluetoothManager =
         appContext.getSystemService(BluetoothManager::class.java)
@@ -379,4 +382,5 @@ class BleEmgDataSource(
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 }
+
 

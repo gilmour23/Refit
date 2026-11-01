@@ -56,6 +56,24 @@ jobs:
           printf 'SUPABASE_URL=https://test.supabase.co\nSUPABASE_PUBLISHABLE_KEY=public-test-key\n' > local.properties
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug -Pkotlin.incremental=false --continue --stacktrace
 
+      - name: Build configured QA app
+        run: |
+          python3 - <<'PY_CONFIG'
+          import json
+          from pathlib import Path
+          config = json.loads(Path('.github/refit-public-config.json').read_text())
+          assert config['url'].startswith('https://')
+          assert config['publishableKey'].startswith('sb_publishable_')
+          Path('local.properties').write_text('SUPABASE_URL=' + config['url'] + '\nSUPABASE_PUBLISHABLE_KEY=' + config['publishableKey'] + '\n')
+          PY_CONFIG
+          ./gradlew :app:assembleQa -Pkotlin.incremental=false --stacktrace
+
+      - name: Upload configured QA APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: refit-configured-qa-apk
+          path: app/build/outputs/apk/qa/app-qa.apk
+
       - name: Upload unit test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -103,4 +121,5 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
           psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/ownership.sql
+
 
