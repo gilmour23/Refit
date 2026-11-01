@@ -37,6 +37,9 @@ fun ActivationFeedback(state: SessionUiState, compact: Boolean = false) {
             .semantics { contentDescription = feedback.label; progressBarRangeInfo = ProgressBarRangeInfo(feedback.fraction, 0f..1f) }) {
             if (feedback.fraction > 0f) Box(Modifier.fillMaxHeight().fillMaxWidth(feedback.fraction).background(Accent, RoundedCornerShape(6.dp)))
         }
+        if (state.dataMode == "sensor" && state.signalStatus == SignalStatus.RECEIVING)
+            Text("원시 신호 · ${state.sensorRawValue ?: "대기 중"}", style = MaterialTheme.typography.bodySmall)
         if (!compact) Text(feedback.message, color = Accent, style = MaterialTheme.typography.bodyMedium)
     }
 }
+

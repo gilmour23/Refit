@@ -32,6 +32,7 @@ class BlePermissionRevocationTest {
         val callback = field.get(source) as ScanCallback
         val device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice("00:11:22:33:44:55")
 
+        BleEmgDataSource::class.java.getDeclaredField("scanning").apply { isAccessible = true }.setBoolean(source, true)
         callback.onScanResult(0, ScanResult(device, null, -40, 1L))
 
         assertTrue(source.connectionState.value is EmgConnectionState.Error)
@@ -48,3 +49,4 @@ class RevokedConnectDevice {
         transport: Int
     ): BluetoothGatt? = throw SecurityException("Connect permission revoked")
 }
+

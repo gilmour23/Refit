@@ -54,13 +54,21 @@ data class SessionUiState(
     val isSaving: Boolean = false,
     val isSyncing: Boolean = false,
     val syncMessage: String? = null,
-    val message: String? = null
+    val message: String? = null,
+    val sensorDevices: List<com.refit.app.data.source.BleSensorDevice> = emptyList(),
+    val sensorScanning: Boolean = false,
+    val sensorState: EmgConnectionState = EmgConnectionState.Disconnected,
+    val sensorRssi: Int? = null,
+    val sensorAddress: String? = null,
+    val sensorMessage: String? = null,
+    val sensorSamples: List<Float> = emptyList(),
+    val sensorRawValue: Float? = null
 )
 
 class SessionViewModel(
     application: Application,
     private val userId: String,
-    private val dataSource: EmgDataSource = MockEmgDataSource(),
+    private var dataSource: EmgDataSource = MockEmgDataSource(),
     realtimeWindowSize: Int = 50,
     private val repository: RehabSessionRepository = RehabSessionRepository(
         ReFitDatabase.getInstance(application).rehabSessionDao()
@@ -72,7 +80,7 @@ class SessionViewModel(
     private val preferences = application.getSharedPreferences("guide-$userId", android.content.Context.MODE_PRIVATE)
     private val initialTiming = runCatching { GuideTiming(preferences.getInt("attempt", 4),
         preferences.getInt("rest", 6), preferences.getInt("count", 3)) }.getOrDefault(GuideTiming())
-    private val dataMode = if (dataSource is MockEmgDataSource) "demo" else "sensor"
+    private val dataMode get() = if (dataSource is MockEmgDataSource) "demo" else "sensor"
     private val _uiState = MutableStateFlow(SessionUiState(guideTiming = initialTiming,
         phaseSecondsRemaining = 3, dataMode = dataMode,
         wristSide = preferences.getString("side", null)?.takeIf { it in listOf("left", "right") },
@@ -90,22 +98,7 @@ class SessionViewModel(
     private val sessionSamples = mutableListOf<Float>()
 
     init {
-        sensorWatchJob = viewModelScope.launch {
-            var seenConnected = false
-            dataSource.connectionState.collect { connection ->
-                when (connection) {
-                    is EmgConnectionState.Connected -> {
-                        seenConnected = true
-                        if (_uiState.value.running || _uiState.value.isConnecting)
-                            _uiState.update { it.copy(connected = true) }
-                    }
-                    is EmgConnectionState.Disconnected, is EmgConnectionState.Error -> {
-                        if (seenConnected && _uiState.value.running) interruptSignal(disconnected = true)
-                    }
-                    else -> Unit
-                }
-            }
-        }
+        watchSensorSource()
         viewModelScope.launch {
             repository.observeAll(userId).catch {
                 _uiState.update { it.copy(storageAvailable = false, history = emptyList(),
@@ -120,6 +113,114 @@ class SessionViewModel(
             syncCoordinator.syncOwner.collect { readyOwner ->
                 if (readyOwner == userId) retrySync()
             }
+        }
+    }
+
+    private val sensorScanner by lazy { com.refit.app.data.source.BleSensorScanner(getApplication()) }
+    private var discoveryJob: Job? = null
+    private var sensorManagementJob: Job? = null
+    private var sensorRssiJob: Job? = null
+    private var sensorPreviewJob: Job? = null
+
+    private fun watchSensorSource() {
+        sensorWatchJob?.cancel()
+        val source = dataSource
+        sensorWatchJob = viewModelScope.launch {
+            var seenConnected = false
+            source.connectionState.collect { connection ->
+                _uiState.update { it.copy(sensorState = connection,
+                    connected = connection is EmgConnectionState.Connected) }
+                when (connection) {
+                    is EmgConnectionState.Connected -> seenConnected = true
+                    is EmgConnectionState.Disconnected, is EmgConnectionState.Error -> {
+                        _uiState.update { it.copy(sensorSamples = emptyList(), sensorRawValue = null, sensorRssi = null) }
+                        if (seenConnected && _uiState.value.running) interruptSignal(disconnected = true)
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    fun scanSensors() {
+        if (_uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return
+        if (discoveryJob == null) discoveryJob = viewModelScope.launch {
+            launch { sensorScanner.devices.collect { devices -> _uiState.update { it.copy(sensorDevices = devices) } } }
+            launch { sensorScanner.scanning.collect { scanning -> _uiState.update { it.copy(sensorScanning = scanning) } } }
+            launch { sensorScanner.error.collect { error -> _uiState.update { it.copy(sensorMessage = error) } } }
+        }
+        sensorScanner.start()
+    }
+
+    fun stopSensorScan() { sensorScanner.stop() }
+
+    fun connectSensor(address: String, service: String, characteristic: String, rawFormatConfirmed: Boolean) {
+        val state = _uiState.value
+        if (state.running || state.isConnecting || state.isSaving) return
+        val config = runCatching {
+            require(rawFormatConfirmed) { "펌웨어의 전송 형식을 확인한 뒤 선택해 주세요." }
+            require(address.matches(Regex("[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}"))) { "센서 주소를 확인해 주세요." }
+            fun uuid(value: String): java.util.UUID {
+                val trimmed = value.trim()
+                val parsed = java.util.UUID.fromString(trimmed)
+                require(parsed.toString().equals(trimmed, ignoreCase = true))
+                return parsed
+            }
+            com.refit.app.data.source.BleEmgConfig(uuid(service), uuid(characteristic), deviceAddress = address, scanTimeoutMillis = 15_000)
+        }.getOrElse {
+            _uiState.update { it.copy(sensorMessage = "서비스·수신 UUID와 INT16_LE 전송 형식을 확인해 주세요.") }
+            return
+        }
+        stopSensorScan()
+        _uiState.update { it.copy(isConnecting = true, sensorMessage = null) }
+        sensorManagementJob = viewModelScope.launch {
+            try {
+                emgJob?.cancel(); sensorPreviewJob?.cancel(); sensorRssiJob?.cancel()
+                dataSource.disconnect()
+                val source = com.refit.app.data.source.BleEmgDataSource(getApplication(), config,
+                    com.refit.app.data.source.Int16LittleEndianEmgPacketParser())
+                dataSource = source
+                _uiState.update { it.copy(dataMode = "sensor", connected = false, sensorAddress = address,
+                    sensorSamples = emptyList(), sensorRawValue = null, sensorRssi = null, samples = emptyList(),
+                    currentActivation = 0f, signalStatus = SignalStatus.WAITING) }
+                watchSensorSource()
+                sensorRssiJob = viewModelScope.launch { source.rssi.collect { rssi -> _uiState.update { it.copy(sensorRssi = rssi) } } }
+                source.connect()
+                sensorPreviewJob = viewModelScope.launch {
+                    source.observeEmg().collect { sample ->
+                        if (sample.value.isFinite() && !_uiState.value.running && source.connectionState.value is EmgConnectionState.Connected)
+                            _uiState.update { it.copy(sensorSamples = (it.sensorSamples + sample.value).takeLast(100), sensorRawValue = sample.value) }
+                    }
+                }
+                preferences.edit().putString("sensor-service", service.trim()).putString("sensor-characteristic", characteristic.trim()).apply()
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { _uiState.update { it.copy(connected = false, sensorMessage = "연결하지 못했어요. 권한·UUID·센서 전원을 확인해 주세요.") } }
+            finally { _uiState.update { it.copy(isConnecting = false) } }
+        }
+    }
+
+    fun disconnectSensor() {
+        if (_uiState.value.running || _uiState.value.isSaving) return
+        stopSensorScan()
+        sensorManagementJob?.cancel(); sensorPreviewJob?.cancel(); sensorRssiJob?.cancel()
+        viewModelScope.launch {
+            runCatching { dataSource.disconnect() }
+            _uiState.update { it.copy(connected = false, isConnecting = false, sensorState = EmgConnectionState.Disconnected,
+                sensorSamples = emptyList(), sensorRawValue = null, sensorRssi = null) }
+        }
+    }
+
+    fun useDemoSensor() {
+        if (_uiState.value.running || _uiState.value.isSaving || _uiState.value.isConnecting) return
+        stopSensorScan()
+        sensorManagementJob = viewModelScope.launch {
+            sensorPreviewJob?.cancel(); sensorRssiJob?.cancel()
+            dataSource.disconnect()
+            dataSource = MockEmgDataSource()
+            watchSensorSource()
+            _uiState.update { it.copy(dataMode = "demo", connected = false, sensorAddress = null, sensorMessage = null,
+                sensorState = EmgConnectionState.Disconnected, sensorRssi = null, sensorSamples = emptyList(),
+                sensorRawValue = null, samples = emptyList(), currentActivation = 0f, signalStatus = SignalStatus.DEMO) }
         }
     }
 
@@ -213,6 +314,7 @@ class SessionViewModel(
                 dataSource.observeEmg().collect { sample ->
                     if (!_uiState.value.running || !sample.value.isFinite()) return@collect
                     if (dataMode != "demo" && (!_uiState.value.connected || dataSource.connectionState.value !is EmgConnectionState.Connected)) return@collect
+                    _uiState.update { it.copy(sensorRawValue = sample.value) }
                     lastSampleAt = SystemClock.elapsedRealtime()
                     _uiState.update { it.copy(signalStatus = if (dataMode == "demo") SignalStatus.DEMO else SignalStatus.RECEIVING) }
                     if (_uiState.value.paused || _uiState.value.phase == GuidePhase.READY) return@collect
@@ -373,7 +475,10 @@ class SessionViewModel(
             guideTiming = _uiState.value.guideTiming,
             phaseSecondsRemaining = 3,
             wristSide = _uiState.value.wristSide, voiceEnabled = _uiState.value.voiceEnabled,
-            dataMode = dataMode
+            dataMode = dataMode,
+            connected = _uiState.value.sensorState is EmgConnectionState.Connected,
+            sensorState = _uiState.value.sensorState,
+            sensorAddress = _uiState.value.sensorAddress, sensorRssi = _uiState.value.sensorRssi
         )
     }
 
@@ -381,6 +486,9 @@ class SessionViewModel(
         emgJob?.cancel()
         timerJob?.cancel()
         sensorWatchJob?.cancel()
+        discoveryJob?.cancel(); sensorManagementJob?.cancel(); sensorPreviewJob?.cancel(); sensorRssiJob?.cancel()
+        // Scanner owns a timed native scan; release it with this account's ViewModel.
+        sensorScanner.stop()
         sessionSamples.clear()
         realtimeWindow.clear()
         _uiState.value = SessionUiState()
@@ -393,3 +501,4 @@ class SessionViewModel(
         super.onCleared()
     }
 }
+

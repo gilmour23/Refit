@@ -42,7 +42,7 @@ private const val DEMO_NOTICE = "데모 · 예시 치수 / 임시 모델"
 
 @Composable
 fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () -> Unit,
-                          onCreateNew: () -> Unit = {}) {
+                          onCreateNew: () -> Unit = {}, measurementJson: String? = null) {
     var yaw by rememberSaveable { mutableFloatStateOf(-30f) }
     var pitch by rememberSaveable { mutableFloatStateOf(15f) }
     BackHandler(onBack = onHome)
@@ -51,8 +51,15 @@ fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () ->
     }) {
         Text("등록된 보조기", style = MaterialTheme.typography.titleMedium)
         LabelValue("사용 부위", if (side == "left") "왼쪽 손목" else "오른쪽 손목")
-        LabelValue("등록 상태", "시연용 보조기 등록됨")
+        LabelValue("등록 상태", if (measurementJson == null) "시연용 보조기 등록됨" else "사진 측정 치수 등록됨")
         PrimaryAction("새 보조기 제작", onCreateNew)
+        if (measurementJson != null) {
+            val measured = remember(measurementJson) { com.refit.app.data.vision.BraceMeasurement.parse(measurementJson) }
+            Hint("사진에서 계산한 추정 치수입니다. 보조기 모델 생성과 실제 제작은 아직 완료되지 않았어요.")
+            measured.warnings.forEach { Text(it, color = MaterialTheme.colorScheme.error) }
+            measured.dimensions.forEach { LabelValue("${it.id}. ${it.name}", "${it.valueMm} mm"); HorizontalDivider() }
+            return@Page
+        }
         CuffPreview(yaw, pitch, { y, p -> yaw = y; pitch = p }, Modifier.height(210.dp))
         Text(DEMO_NOTICE, color = Accent)
         Hint("등록한 시연용 보조기입니다. 사진 분석과 실제 제작 완료를 확인한 상태는 아닙니다.")
@@ -66,6 +73,7 @@ fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () ->
 @Composable
 fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)? = null,
                       setupRequired: Boolean = false, onRegisterDemo: (suspend (String) -> Boolean)? = null,
+                      onRegisterMeasured: (suspend (String, String) -> Boolean)? = null,
                       onBack: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
     var side by rememberSaveable { mutableStateOf<String?>(null) }
@@ -116,12 +124,17 @@ fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)?
     }
     val jsonExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { export(it, "json") }
     val stlExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { export(it, "stl") }
+    if (step >= 2 && !usingExample && topUri != null && sideUri != null) {
+        PhotoMeasurementFlow(topUri!!, sideUri!!, if (side == "왼쪽 손목") "left" else "right",
+            onRegisterMeasured, { step = 1 })
+        return
+    }
     val titles = listOf("보조기 제작", "사진 등록", "손목 위치 확인", "치수 확인", "보조기 미리보기")
     key(step) {
     Page(titles[step], onBack = if (step == 0 && setupRequired) null else leave, footer = {
         if (step < 4) PrimaryAction(when(step) {
             0 -> "사진 준비하기"
-            1 -> "손목 위치 확인하기"
+            1 -> if (usingExample) "손목 위치 확인하기" else "사진 분석하기"
             2 -> "예시 치수 보기"
             else -> "임시 모델 미리보기"
         }, { message = null; step++ }, when(step) {
@@ -152,7 +165,7 @@ fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)?
                 ChoiceRow(listOf("왼쪽 손목", "오른쪽 손목"), side, { side = it })
                 Hint("손목 사진을 등록하고 치수와 보조기 모델을 확인하세요.")
                 CuffPreview(yaw, pitch, { y, p -> yaw = y; pitch = p }, Modifier.height(160.dp))
-                Hint("사진 분석은 아직 연결 전입니다. 선택한 사진과 관계없이 동일한 예시 치수와 손목 커프가 표시됩니다.")
+                Hint("사진 두 장을 등록하면 카드와 손을 자동 인식해 치수를 계산합니다. 예시 그림은 별도로 체험할 수 있어요.")
             }
             1 -> {
                 Hint("손가락이 위를 향하도록 손과 손목을 펴고, 위·옆 방향의 사진을 준비해 주세요. 크기 기준 카드도 함께 넣어주세요.")
@@ -171,7 +184,7 @@ fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)?
                 SecondaryAction(if (usingExample) "✓ 예시 그림 사용 중" else "예시 그림으로 진행", {
                     usingExample = true; topY = .48f; sideY = .48f
                 })
-                Hint("선택한 사진은 서버로 전송하지 않습니다. 사진이 없는 에뮬레이터에서는 예시 그림으로 진행할 수 있어요.")
+                Hint("사진 분석을 시작하면 원본 사진을 측정 서버로 전송합니다. 예시 그림으로 진행하면 사진 전송 없이 체험합니다.")
             }
             2 -> {
                 ChoiceRow(listOf("위 사진", "옆 사진"), if (selectedView == 0) "위 사진" else "옆 사진", { selectedView = if (it == "위 사진") 0 else 1 })
@@ -332,3 +345,4 @@ private fun CuffPreview(yaw: Float, pitch: Float, onRotate: (Float, Float) -> Un
         }
     }
 }
+

@@ -28,10 +28,11 @@ android {
         applicationId = "com.refit.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.6.1"
+        versionCode = 14
+        versionName = "0.6.3"
         manifestPlaceholders["appLabel"] = "Re:Fit"
 
+        buildConfigField("String", "VISION_SERVER_URL", "\"${localProperty("VISION_SERVER_URL")}\"")
         buildConfigField(
             "String",
             "SUPABASE_URL",
@@ -136,4 +137,5 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
 
