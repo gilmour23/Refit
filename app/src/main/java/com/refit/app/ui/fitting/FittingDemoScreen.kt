@@ -41,6 +41,28 @@ import kotlin.math.*
 private const val DEMO_NOTICE = "데모 · 예시 치수 / 임시 모델"
 
 @Composable
+fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () -> Unit) {
+    var yaw by rememberSaveable { mutableFloatStateOf(-30f) }
+    var pitch by rememberSaveable { mutableFloatStateOf(15f) }
+    BackHandler(onBack = onHome)
+    Page("내 보조기", footer = {
+        PrimaryAction("재활 홈으로", onHome)
+        BottomTabs("fitting", onHome, onOpenHistory, {})
+    }) {
+        Text("등록된 보조기", style = MaterialTheme.typography.titleMedium)
+        LabelValue("사용 부위", if (side == "left") "왼쪽 손목" else "오른쪽 손목")
+        LabelValue("등록 상태", "시연용 보조기 등록됨")
+        CuffPreview(yaw, pitch, { y, p -> yaw = y; pitch = p }, Modifier.height(210.dp))
+        Text(DEMO_NOTICE, color = Accent)
+        Hint("등록한 시연용 보조기입니다. 사진 분석과 실제 제작 완료를 확인한 상태는 아닙니다.")
+        HorizontalDivider()
+        LabelValue("손목 폭 · 예시", "${DemoCuffMesh.wristWidth.toInt()} mm")
+        LabelValue("손목 두께 · 예시", "${DemoCuffMesh.wristDepth.toInt()} mm")
+        LabelValue("커프 길이 · 예시", "${DemoCuffMesh.length.toInt()} mm")
+    }
+}
+
+@Composable
 fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)? = null,
                       setupRequired: Boolean = false, onRegisterDemo: (suspend (String) -> Boolean)? = null,
                       onBack: () -> Unit) {

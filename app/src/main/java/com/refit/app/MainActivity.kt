@@ -45,6 +45,7 @@ import com.refit.app.ui.components.ReFitTheme
 import androidx.activity.compose.BackHandler
 import com.refit.app.ui.fitting.FittingDemoScreen
 import com.refit.app.ui.fitting.BraceSetupStore
+import com.refit.app.ui.fitting.RegisteredBraceScreen
 
 private const val LOCAL_DEMO_OWNER = "__offline_demo_v1__"
 
@@ -208,8 +209,12 @@ private fun AuthenticatedApp(
     }
 
     when (page) {
-        AppPage.FITTING -> FittingDemoScreen(
-            setupRequired = registeredDemoSide == null,
+        AppPage.FITTING -> if (registeredDemoSide != null) RegisteredBraceScreen(
+            side = requireNotNull(registeredDemoSide),
+            onHome = { pageName = AppPage.HOME.name },
+            onOpenHistory = { pageName = AppPage.HISTORY.name }
+        ) else FittingDemoScreen(
+            setupRequired = true,
             onRegisterDemo = { side ->
                 val saved = withContext(Dispatchers.IO) { runCatching { braceStore.registerDemo(auth.userId, side) } }
                 if (saved.isSuccess) {
@@ -218,8 +223,6 @@ private fun AuthenticatedApp(
                 }
                 saved.isSuccess
             },
-            onHome = { pageName = AppPage.HOME.name },
-            onOpenHistory = { pageName = AppPage.HISTORY.name },
             onBack = { pageName = AppPage.HOME.name }
         )
         AppPage.HOME -> {

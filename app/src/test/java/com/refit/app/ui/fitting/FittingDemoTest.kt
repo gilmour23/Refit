@@ -76,6 +76,18 @@ class FittingDemoTest {
         assertEquals(0, exits)
     }
 
+    @Test fun registeredBraceShowsDetailsAndNeverShowsCreationActions() {
+        var home = 0
+        compose.setContent { ReFitTheme { RegisteredBraceScreen("right", { home++ }, {}) } }
+        compose.onNodeWithText("내 보조기").assertIsDisplayed()
+        compose.onNodeWithText("오른쪽 손목").assertExists()
+        compose.onNodeWithText("사진 준비하기").assertDoesNotExist()
+        compose.onNodeWithText("보조기 제작").assertDoesNotExist()
+        capture("26-registered-brace")
+        compose.onNodeWithText("재활 홈으로").performClick()
+        assertEquals(1, home)
+    }
+
     private fun capture(name: String) {
         System.setProperty("roborazzi.test.record", "true")
         val dir = File("build/outputs/patient-screens").also { it.mkdirs() }
