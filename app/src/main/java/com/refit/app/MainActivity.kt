@@ -42,13 +42,15 @@ import com.refit.app.ui.session.SessionViewModelFactory
 import com.refit.app.ui.session.GuideSettingsScreen
 import com.refit.app.ui.components.ReFitTheme
 import androidx.activity.compose.BackHandler
+import com.refit.app.ui.fitting.FittingDemoScreen
 
 private const val LOCAL_DEMO_OWNER = "__offline_demo_v1__"
 
 private enum class AppPage {
     HOME,
     SESSION,
-    HISTORY
+    HISTORY,
+    FITTING
 }
 
 class MainActivity : ComponentActivity() {
@@ -183,6 +185,7 @@ private fun AuthenticatedApp(
     }
 
     when (page) {
+        AppPage.FITTING -> FittingDemoScreen(onBack = { pageName = AppPage.HOME.name })
         AppPage.HOME -> {
             HomeScreen(
                 email = auth.email,
@@ -190,6 +193,7 @@ private fun AuthenticatedApp(
                 wristSide = sessionState.wristSide,
                 guideDescription = sessionState.guideTiming.description,
                 onConfigure = { showGuideSettings = true },
+                onOpenFitting = { pageName = AppPage.FITTING.name },
                 sessionRefreshPending = auth.sessionRefreshPending,
                 onStartExercise = {
                     pageName = AppPage.SESSION.name

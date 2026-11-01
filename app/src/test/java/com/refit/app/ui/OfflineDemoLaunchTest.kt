@@ -99,6 +99,16 @@ class OfflineDemoLaunchTest {
         compose.onNodeWithText("다시 동기화").assertDoesNotExist()
     }
 
+    @Test fun offlineHomeOpensAndReturnsFromFittingWithoutLogin() {
+        awaitText("운동 준비하기")
+        compose.onNodeWithText("보조기 제작 체험").performScrollTo().performClick()
+        compose.onNodeWithText("맞춤 보조기 제작").assertIsDisplayed()
+        compose.onNodeWithText("로그인", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText("‹ 뒤로").performClick()
+        awaitText("운동 준비하기")
+        compose.onNodeWithText("운동 준비하기").assertIsEnabled()
+    }
+
     private fun awaitText(text: String) {
         compose.waitUntil(timeoutMillis = 10_000) {
             compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
@@ -111,3 +121,4 @@ class OfflineDemoLaunchTest {
         syncStatus = SyncStatus.LOCAL_ONLY, dataMode = "demo", wristSide = side
     )
 }
+

@@ -15,7 +15,7 @@ import com.refit.app.ui.session.WristIllustration
 @Composable
 fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                sessions: List<RehabSessionEntity> = emptyList(), wristSide: String? = null, guideDescription: String = "시도 4초 · 휴식 6초 · 3회",
-               onConfigure: () -> Unit = {}, onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: (() -> Unit)?) {
+               onConfigure: () -> Unit = {}, onOpenFitting: () -> Unit = {}, onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: (() -> Unit)?) {
     var showAccount by remember { mutableStateOf(false) }
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 720 || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f
     Page("오늘의 손목 운동", topAction = {
@@ -50,6 +50,10 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                 if (latest.pain != null || latest.fatigue != null) Hint(listOfNotNull(latest.pain?.let { "통증 · $it" }, latest.fatigue?.let { "피로 · $it" }).joinToString("  /  "))
             }
         }
+        HorizontalDivider()
+        Text("내 손목에 맞는 보조기", style = MaterialTheme.typography.titleMedium)
+        Hint("사진과 함께 맞춤 제작 과정을 체험해 보세요.")
+        SecondaryAction("보조기 제작 체험", onOpenFitting)
     }
     if (showAccount && onSignOut != null) AlertDialog(onDismissRequest = { showAccount = false }, title = { Text("내 계정") },
         text = { Text(email ?: "로그인한 계정") },
