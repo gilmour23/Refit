@@ -6,7 +6,8 @@ data class BleEmgConfig(
     val serviceUuid: UUID,
     val notifyCharacteristicUuid: UUID,
     val deviceNamePrefix: String? = null,
-    val scanTimeoutMillis: Long = 10_000L
+    val scanTimeoutMillis: Long = 10_000L,
+    val deviceAddress: String? = null
 ) {
     init {
         require(scanTimeoutMillis > 0L) {
@@ -14,4 +15,5 @@ data class BleEmgConfig(
         }
     }
 }
+
 

@@ -54,6 +54,17 @@ class BleEmgDataSource(
     private var connectContinuation: CancellableContinuation<Unit>? = null
     private var scanning = false
     private var selectedDeviceName: String? = null
+    private val _rssi = MutableStateFlow<Int?>(null)
+    val rssi: StateFlow<Int?> = _rssi.asStateFlow()
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val readRssi = object : Runnable {
+        override fun run() {
+            val current = gatt ?: return
+            if (_connectionState.value !is EmgConnectionState.Connected) return
+            runCatching { current.readRemoteRssi() }
+            handler.postDelayed(this, 3000)
+        }
+    }
 
     private val scanner
         get() = bluetoothManager.adapter?.bluetoothLeScanner
@@ -76,8 +87,19 @@ class BleEmgDataSource(
                 continuation.invokeOnCancellation {
                     stopScan()
                     closeGatt()
+                    _connectionState.value = EmgConnectionState.Disconnected
                 }
-                startScan()
+                val address = config.deviceAddress
+                if (address == null) startScan() else {
+                    try {
+                        val device = adapter.getRemoteDevice(address)
+                        selectedDeviceName = runCatching { device.name }.getOrNull()
+                        _connectionState.value = EmgConnectionState.Connecting(selectedDeviceName)
+                        gatt = device.connectGatt(appContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+                        if (gatt == null) failConnection("센서 연결을 시작하지 못했어요.")
+                    } catch (_: SecurityException) { failConnection("블루투스 연결 권한을 다시 허용해 주세요.") }
+                    catch (_: Exception) { failConnection("선택한 센서 주소를 확인해 주세요.") }
+                }
             }
         }
     }
@@ -85,6 +107,7 @@ class BleEmgDataSource(
     override suspend fun disconnect() {
         stopScan()
         closeGatt()
+        connectContinuation?.cancel()
         connectContinuation = null
         selectedDeviceName = null
         _connectionState.value = EmgConnectionState.Disconnected
@@ -136,6 +159,7 @@ class BleEmgDataSource(
             result: ScanResult
         ) {
             try {
+                if (!scanning && config.deviceAddress != null) return
                 val device = result.device
                 val advertisedName = result.scanRecord?.deviceName
                 val name = advertisedName ?: runCatching { device.name }.getOrNull()
@@ -147,6 +171,7 @@ class BleEmgDataSource(
 
                 stopScan()
                 selectedDeviceName = name
+                _rssi.value = result.rssi
                 _connectionState.value =
                     EmgConnectionState.Connecting(name)
 
@@ -173,6 +198,7 @@ class BleEmgDataSource(
             status: Int,
             newState: Int
         ) {
+            if (gatt !== this@BleEmgDataSource.gatt) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 failConnection("BLE connection failed with status ${status}.")
                 return
@@ -191,6 +217,7 @@ class BleEmgDataSource(
 
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     _connectionState.value = EmgConnectionState.Disconnected
+                    closeGatt()
                     if (connectContinuation?.isActive == true) {
                         failConnection("BLE device disconnected during setup.")
                     }
@@ -202,6 +229,7 @@ class BleEmgDataSource(
             gatt: BluetoothGatt,
             status: Int
         ) {
+            if (gatt !== this@BleEmgDataSource.gatt) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 failConnection("GATT service discovery failed with status ${status}.")
                 return
@@ -224,7 +252,7 @@ class BleEmgDataSource(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
         ) {
-            handlePayload(characteristic.value ?: return)
+            if (gatt === this@BleEmgDataSource.gatt) handlePayload(characteristic.value ?: return)
         }
 
         override fun onCharacteristicChanged(
@@ -232,7 +260,11 @@ class BleEmgDataSource(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            handlePayload(value)
+            if (gatt === this@BleEmgDataSource.gatt) handlePayload(value)
+        }
+
+        override fun onReadRemoteRssi(gatt: BluetoothGatt, rssi: Int, status: Int) {
+            if (gatt === this@BleEmgDataSource.gatt && status == BluetoothGatt.GATT_SUCCESS) _rssi.value = rssi
         }
 
         override fun onDescriptorWrite(
@@ -240,6 +272,8 @@ class BleEmgDataSource(
             descriptor: BluetoothGattDescriptor,
             status: Int
         ) {
+            if (gatt !== this@BleEmgDataSource.gatt) return
+            if (descriptor.uuid != CLIENT_CONFIG_UUID) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 failConnection("Could not enable EMG notifications.")
                 return
@@ -247,6 +281,7 @@ class BleEmgDataSource(
 
             _connectionState.value =
                 EmgConnectionState.Connected(selectedDeviceName)
+            handler.post(readRssi)
 
             connectContinuation?.let { continuation ->
                 if (continuation.isActive) {
@@ -333,7 +368,11 @@ class BleEmgDataSource(
     }
 
     private fun closeGatt() {
-        gatt?.let { current ->
+        handler.removeCallbacks(readRssi)
+        _rssi.value = null
+        val old = gatt
+        gatt = null
+        old?.let { current ->
             runCatching {
                 if (hasConnectPermission()) {
                     current.disconnect()
@@ -379,4 +418,5 @@ class BleEmgDataSource(
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 }
+
 

@@ -18,7 +18,7 @@ import com.refit.app.ui.components.*
 import com.refit.app.ui.result.ResultScreen
 
 @Composable
-fun SessionScreen(viewModel: SessionViewModel, onBackToHome: () -> Unit) {
+fun SessionScreen(viewModel: SessionViewModel, onOpenSensors: (() -> Unit)? = null, onBackToHome: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showEnd by rememberSaveable { mutableStateOf(false) }
     var wasPaused by rememberSaveable { mutableStateOf(false) }
@@ -47,7 +47,7 @@ fun SessionScreen(viewModel: SessionViewModel, onBackToHome: () -> Unit) {
             { viewModel.setPaused(!state.paused) }, requestEnd, { showSettings = true }, back,
             onSide = viewModel::configureWristSide, onMoreRest = viewModel::extendRest,
             onRetryConnection = viewModel::retryConnection, voiceStatus = voiceStatus,
-            onRepeat = { repeatToken++ }, onInstruction = { instruction = it })
+            onRepeat = { repeatToken++ }, onInstruction = { instruction = it }, onOpenSensors = onOpenSensors)
     }
     if (showEnd && state.running) AlertDialog(
         onDismissRequest = { showEnd = false; viewModel.setPaused(wasPaused) },
@@ -60,7 +60,7 @@ fun SessionScreen(viewModel: SessionViewModel, onBackToHome: () -> Unit) {
 fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> Unit,
     onStart: () -> Unit, onPause: () -> Unit, onStop: () -> Unit, onSettings: () -> Unit, onBack: () -> Unit,
     onSide: (String) -> Unit = {}, onMoreRest: () -> Unit = {}, onRetryConnection: () -> Unit = {},
-    voiceStatus: VoiceStatus = VoiceStatus.AVAILABLE, onRepeat: () -> Unit = {}, onInstruction: (String) -> Unit = {}) {
+    voiceStatus: VoiceStatus = VoiceStatus.AVAILABLE, onRepeat: () -> Unit = {}, onInstruction: (String) -> Unit = {}, onOpenSensors: (() -> Unit)? = null) {
     var chosenSide by rememberSaveable { mutableStateOf(state.wristSide) }
     var step by rememberSaveable { mutableIntStateOf(if (state.wristSide == null) 0 else 1) }
     LaunchedEffect(state.wristSide) { if (state.wristSide != null) chosenSide = state.wristSide }
@@ -142,6 +142,7 @@ fun SessionContent(state: SessionUiState, voice: Boolean, onVoice: (Boolean) -> 
                         DemoNotice()
                         Hint("센서 연결 없이 안내를 체험합니다.")
                     }
+                    if (onOpenSensors != null) TextButton(onOpenSensors) { Text("센서 연결 설정") }
                     Text(state.guideTiming.description, style = MaterialTheme.typography.bodyMedium)
                     TextButton(onSettings) { Text("안내 설정") }
                 }
@@ -224,3 +225,4 @@ private fun TimingInput(label: String, value: String, onValue: (String) -> Unit,
     }
     HorizontalDivider()
 }
+

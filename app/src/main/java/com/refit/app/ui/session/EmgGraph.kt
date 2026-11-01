@@ -22,16 +22,18 @@ fun EmgGraph(
     ) {
         if (samples.size < 2) return@Canvas
 
-        val maxValue = samples.maxOrNull()
-            ?.coerceAtLeast(0.01f)
-            ?: 1f
+        val finite = samples.filter { it.isFinite() }
+        if (finite.size < 2) return@Canvas
+        val low = minOf(finite.minOrNull() ?: 0f, 0f)
+        val high = maxOf(finite.maxOrNull() ?: 1f, 1f)
+        val range = (high - low).coerceAtLeast(1f)
 
-        val stepX = size.width / (samples.size - 1).coerceAtLeast(1)
+        val stepX = size.width / (finite.size - 1).coerceAtLeast(1)
         val path = Path()
 
-        samples.forEachIndexed { index, value ->
+        finite.forEachIndexed { index, value ->
             val x = index * stepX
-            val normalized = (value / maxValue).coerceIn(0f, 1f)
+            val normalized = ((value - low) / range).coerceIn(0f, 1f)
             val y = size.height - normalized * size.height
 
             if (index == 0) {
@@ -48,4 +50,5 @@ fun EmgGraph(
         )
     }
 }
+
 

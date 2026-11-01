@@ -54,7 +54,8 @@ private enum class AppPage {
     SESSION,
     HISTORY,
     FITTING,
-    CREATE_BRACE
+    CREATE_BRACE,
+    SENSORS
 }
 
 class MainActivity : ComponentActivity() {
@@ -160,12 +161,16 @@ private fun AuthenticatedApp(
     val application = context.applicationContext as Application
     val braceStore = remember(application) { BraceSetupStore(application) }
     var setupReload by remember(auth.userId) { mutableStateOf(0) }
+    var registeredMeasurement by remember(auth.userId) { mutableStateOf<String?>(null) }
     var registeredDemoSide by remember(auth.userId) { mutableStateOf<String?>(null) }
     val setupLoad by produceState<Result<String?>?>(null, auth.userId, setupReload) {
         value = null
-        val loaded = withContext(Dispatchers.IO) { runCatching { braceStore.readDemoSide(auth.userId) } }
-        registeredDemoSide = loaded.getOrNull()
-        value = loaded
+        val loaded = withContext(Dispatchers.IO) { runCatching {
+            braceStore.readDemoSide(auth.userId) to braceStore.readMeasurement(auth.userId)
+        } }
+        registeredDemoSide = loaded.getOrNull()?.first
+        registeredMeasurement = loaded.getOrNull()?.second
+        value = loaded.map { it.first }
     }
     if (setupLoad == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -188,6 +193,20 @@ private fun AuthenticatedApp(
         val saved = withContext(Dispatchers.IO) { runCatching { braceStore.registerDemo(auth.userId, side) } }
         if (saved.isSuccess) {
             registeredDemoSide = side
+            registeredMeasurement = null
+            pageName = AppPage.HOME.name
+        }
+        saved.isSuccess
+    }
+
+    val registerMeasuredBrace: suspend (String, String) -> Boolean = { side, json ->
+        val saved = withContext(Dispatchers.IO) { runCatching {
+            braceStore.registerMeasurement(auth.userId, side, json)
+            braceStore.readMeasurement(auth.userId)
+        } }
+        if (saved.isSuccess) {
+            registeredDemoSide = side
+            registeredMeasurement = saved.getOrNull()
             pageName = AppPage.HOME.name
         }
         saved.isSuccess
@@ -222,15 +241,18 @@ private fun AuthenticatedApp(
             side = requireNotNull(registeredDemoSide),
             onHome = { pageName = AppPage.HOME.name },
             onOpenHistory = { pageName = AppPage.HISTORY.name },
-            onCreateNew = { pageName = AppPage.CREATE_BRACE.name }
+            onCreateNew = { pageName = AppPage.CREATE_BRACE.name },
+            measurementJson = registeredMeasurement
         ) else FittingDemoScreen(
             setupRequired = true,
             onRegisterDemo = registerDemoBrace,
+            onRegisterMeasured = registerMeasuredBrace,
             onBack = { pageName = AppPage.HOME.name }
         )
         AppPage.CREATE_BRACE -> FittingDemoScreen(
             setupRequired = false,
             onRegisterDemo = registerDemoBrace,
+            onRegisterMeasured = registerMeasuredBrace,
             onHome = { pageName = AppPage.HOME.name },
             onOpenHistory = { pageName = AppPage.HISTORY.name },
             onBack = { pageName = AppPage.FITTING.name }
@@ -241,6 +263,9 @@ private fun AuthenticatedApp(
                 sessions = sessionState.history,
                 wristSide = registeredDemoSide ?: sessionState.wristSide,
                 braceSide = registeredDemoSide,
+                braceMeasured = registeredMeasurement != null,
+                dataMode = sessionState.dataMode,
+                onOpenSensors = { pageName = AppPage.SENSORS.name },
                 guideDescription = sessionState.guideTiming.description,
                 onConfigure = { showGuideSettings = true },
                 onOpenFitting = { pageName = AppPage.FITTING.name },
@@ -256,9 +281,14 @@ private fun AuthenticatedApp(
             )
         }
 
+        AppPage.SENSORS -> com.refit.app.ui.sensor.SensorScreen(sessionViewModel, auth.userId) {
+            pageName = AppPage.HOME.name
+        }
+
         AppPage.SESSION -> {
             SessionScreen(
                 viewModel = sessionViewModel,
+                onOpenSensors = { pageName = AppPage.SENSORS.name },
                 onBackToHome = {
                     pageName = AppPage.HOME.name
                 }
@@ -280,4 +310,5 @@ private fun AuthenticatedApp(
         }
     }
 }
+
 

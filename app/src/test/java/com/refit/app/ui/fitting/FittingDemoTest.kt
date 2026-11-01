@@ -29,7 +29,7 @@ class FittingDemoTest {
         compose.onNodeWithText("사진 준비하기").assertIsNotEnabled()
         compose.onNodeWithText("왼쪽 손목").performScrollTo().performClick()
         compose.onNodeWithText("사진 준비하기").performClick()
-        compose.onNodeWithText("손목 위치 확인하기").assertIsNotEnabled()
+        compose.onNodeWithText("사진 분석하기").assertIsNotEnabled()
         compose.onNodeWithText("예시 그림으로 진행").performScrollTo().performClick()
         compose.onNodeWithText("손목 위치 확인하기").performClick()
         capture("21-fitting-guide")
@@ -97,3 +97,4 @@ class FittingDemoTest {
         compose.onRoot().captureRoboImage(File(dir, "$name.png").absolutePath)
     }
 }
+
