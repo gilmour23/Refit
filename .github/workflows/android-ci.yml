@@ -54,7 +54,7 @@ jobs:
           # Keep tests independent of whether a developer has configured the app.
           # SDK integration tests isolate HTTP rather than using a live project.
           printf 'SUPABASE_URL=https://test.supabase.co\nSUPABASE_PUBLISHABLE_KEY=public-test-key\n' > local.properties
-          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug -Pkotlin.incremental=false --stacktrace
+          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug -Pkotlin.incremental=false --continue --stacktrace
 
       - name: Upload unit test reports
         if: always()
