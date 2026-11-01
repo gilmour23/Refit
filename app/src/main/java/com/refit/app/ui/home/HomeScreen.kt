@@ -15,7 +15,7 @@ import com.refit.app.ui.session.WristIllustration
 @Composable
 fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                sessions: List<RehabSessionEntity> = emptyList(), wristSide: String? = null, guideDescription: String = "시도 4초 · 휴식 6초 · 3회",
-               onConfigure: () -> Unit = {}, onOpenFitting: () -> Unit = {}, braceSide: String? = null,
+               onConfigure: () -> Unit = {}, onOpenCenter: (() -> Unit)? = null, planSource: String? = null, onOpenFitting: () -> Unit = {}, braceSide: String? = null,
                onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: (() -> Unit)?) {
     var showAccount by remember { mutableStateOf(false) }
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 720 || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f
@@ -39,6 +39,8 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
             Text(guideDescription, style = MaterialTheme.typography.bodyMedium, color = Muted)
             PrimaryAction("운동 준비하기", onStartExercise)
         }
+        planSource?.let { Hint("센터 계획 적용 중 · $it") }
+        onOpenCenter?.let { action -> TextButton(action) { Text("재활센터 연결 · 운동 계획") } }
         TextButton(onConfigure, modifier = Modifier.align(Alignment.Start)) { Text("안내 시간 설정") }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Text("최근 운동", style = MaterialTheme.typography.titleMedium)
@@ -61,5 +63,6 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
         confirmButton = { TextButton(onSignOut) { Text("로그아웃") } },
         dismissButton = { TextButton({ showAccount = false }) { Text("닫기") } })
 }
+
 
 

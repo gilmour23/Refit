@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
-import java.time.Instant
 
 class RehabSessionRemoteDataSource(
     private val client: SupabaseClient? = SupabaseClientProvider.clientOrNull()
@@ -37,20 +36,9 @@ class RehabSessionRemoteDataSource(
         // authority if the SDK's active token changes while the request runs.
         check(canSync(session.userId)) { "The record owner is not signed in." }
 
-        val dto = RehabSessionUpsertDto(
-            userId = session.userId,
-            clientLocalId = session.clientLocalId,
-            createdAt = Instant.ofEpochMilli(session.createdAt).toString(),
-            exerciseType = session.exerciseName,
-            durationSeconds = session.durationSeconds,
-            sampleCount = session.sampleCount,
-            rms = session.rms,
-            mav = session.mav,
-            peakActivation = session.peakActivation,
-            updatedAt = Instant.ofEpochMilli(session.updatedAt).toString()
-        )
+        val dto = session.toUpsertDto()
 
-        return supabase
+        val remoteId = supabase
             .from("rehab_sessions")
             .upsert(value = dto) {
                 onConflict = "user_id,client_local_id"
@@ -58,6 +46,12 @@ class RehabSessionRemoteDataSource(
             }
             .decodeSingle<RemoteSessionId>()
             .id.also { UUID.fromString(it) }
+        session.toSignalDto(remoteId)?.let { signal ->
+            check(canSync(session.userId)) { "The record owner is not signed in." }
+            supabase.from("rehab_session_signals").upsert(signal) { onConflict = "session_id" }
+        }
+        return remoteId
     }
 }
+
 

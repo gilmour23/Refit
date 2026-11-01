@@ -12,6 +12,9 @@ class RehabSessionRepository(
     suspend fun updateFatigue(localId: Long, userId: String, fatigue: String) = dao.updateFatigue(localId, userId, fatigue)
     suspend fun updateComfort(localId: Long, userId: String, comfort: String) = dao.updateComfort(localId, userId, comfort)
 
+    suspend fun markSyncedIfUnchanged(localId: Long, userId: String, expectedUpdatedAt: Long, remoteId: String): Boolean =
+        dao.markSyncedIfUnchanged(localId, userId, expectedUpdatedAt, remoteId)
+
     fun observeAll(userId: String): Flow<List<RehabSessionEntity>> =
         dao.observeAll(userId)
 
@@ -41,3 +44,4 @@ class RehabSessionRepository(
         )
     }
 }
+

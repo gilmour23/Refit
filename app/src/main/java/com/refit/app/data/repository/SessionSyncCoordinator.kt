@@ -30,8 +30,7 @@ class SessionSyncCoordinator(
             repository.updateSyncState(localId, userId, SyncStatus.SYNCING, session.remoteId)
             val remoteId = remote.upsert(session)
             currentCoroutineContext().ensureActive()
-            repository.updateSyncState(localId, userId, SyncStatus.SYNCED, remoteId)
-            true
+            repository.markSyncedIfUnchanged(localId, userId, session.updatedAt, remoteId)
         } catch (cancelled: CancellationException) {
             // Logout cancels account-owned work. Reset the durable state before
             // propagating cancellation; process death is recovered by pending query.
@@ -51,3 +50,4 @@ class SessionSyncCoordinator(
         private val uploadMutex = Mutex()
     }
 }
+

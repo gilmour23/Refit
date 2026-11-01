@@ -386,6 +386,34 @@ class GuidedSessionTest {
         } finally { store.clear(); db.close(); Dispatchers.resetMain() }
     }
 
+    @Test fun clinicianPlanRequiresExplicitApplyAndRevocationRestoresManualTiming() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val db = Room.inMemoryDatabaseBuilder(app, ReFitDatabase::class.java).build()
+        val repo = RehabSessionRepository(db.rehabSessionDao()); val store = ViewModelStore()
+        try {
+            val vm = SessionViewModel(app, "plan-owner", Source(), repository = repo,
+                syncCoordinator = SessionSyncCoordinator(repo, RehabSessionRemoteDataSource(null)))
+            store.put("session", vm)
+            vm.configureGuidance(4, 6, 3)
+            val today = java.time.LocalDate.now()
+            val plan = com.refit.app.data.remote.ExercisePlanDto("p", "center", "plan-owner", "author",
+                "wrist_extension", today.toString(), null, listOf(today.dayOfWeek.value), 5, 8, 10, 1,
+                "안내", today.toString() + "T00:00:00Z")
+            assertEquals(GuideTiming(4, 6, 3), vm.uiState.value.guideTiming)
+            assertFalse(vm.applyClinicianPlan(plan.copy(patientId = "other")))
+            assertTrue(vm.applyClinicianPlan(plan))
+            assertEquals(GuideTiming(8, 10, 5), vm.uiState.value.guideTiming)
+            assertEquals("p", vm.uiState.value.appliedPlan!!.id)
+            vm.reconcileClinicianPlan(null)
+            assertNull(vm.uiState.value.appliedPlan)
+            assertEquals(GuideTiming(4, 6, 3), vm.uiState.value.guideTiming)
+            vm.applyClinicianPlan(plan)
+            assertTrue(vm.configureGuidance(3, 5, 2))
+            assertNull(vm.uiState.value.appliedPlan)
+        } finally { store.clear(); db.close(); Dispatchers.resetMain() }
+    }
+
     private class Source(private val seedOnConnect: Boolean = true, private val onConnect: suspend () -> Unit = {}) : EmgDataSource {
         override val connectionState = MutableStateFlow<EmgConnectionState>(EmgConnectionState.Disconnected)
         val samples = MutableSharedFlow<EmgSample>(replay = 1)
@@ -394,3 +422,4 @@ class GuidedSessionTest {
         override fun observeEmg() = samples
     }
 }
+

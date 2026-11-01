@@ -54,7 +54,8 @@ private enum class AppPage {
     SESSION,
     HISTORY,
     FITTING,
-    CREATE_BRACE
+    CREATE_BRACE,
+    CENTER
 }
 
 class MainActivity : ComponentActivity() {
@@ -202,13 +203,25 @@ private fun AuthenticatedApp(
         )
     )
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+    val centerViewModel: com.refit.app.ui.center.PatientCenterViewModel = viewModel(
+        viewModelStoreOwner = accountOwner, key = "center-${auth.userId}",
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
+                com.refit.app.ui.center.PatientCenterViewModel(auth.userId) as T
+        })
+    val centerState by centerViewModel.state.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(centerState.snapshot?.activePlan?.id, centerState.loading) {
+        if (!centerState.loading) sessionViewModel.reconcileClinicianPlan(centerState.snapshot?.activePlan?.id)
+    }
 
     var showGuideSettings by rememberSaveable(auth.userId) { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { sessionViewModel.setPaused(true) }
-    BackHandler(enabled = page == AppPage.HISTORY) { pageName = AppPage.HOME.name }
+    BackHandler(enabled = page == AppPage.HISTORY || page == AppPage.CENTER) { pageName = AppPage.HOME.name }
 
     LifecycleEventEffect(Lifecycle.Event.ON_START) {
         sessionViewModel.retrySync()
+        if (onSignOut != null) centerViewModel.refresh()
     }
     if (showGuideSettings) {
         GuideSettingsScreen(sessionState.guideTiming, { showGuideSettings = false }, { a, r, n ->
@@ -218,6 +231,17 @@ private fun AuthenticatedApp(
     }
 
     when (page) {
+        AppPage.CENTER -> if (onSignOut != null) com.refit.app.ui.center.PatientCenterScreen(
+            state = centerState, appliedPlanId = sessionState.appliedPlan?.id,
+            canApply = !sessionState.running && !sessionState.isConnecting && !sessionState.isSaving,
+            onRefresh = centerViewModel::refresh,
+            onAccept = centerViewModel::accept,
+            onRevoke = { sessionViewModel.reconcileClinicianPlan(null); centerViewModel.revoke(it) },
+            onApply = { plan ->
+                if (sessionViewModel.applyClinicianPlan(plan)) pageName = AppPage.HOME.name
+            },
+            onBack = { pageName = AppPage.HOME.name }
+        ) else { pageName = AppPage.HOME.name }
         AppPage.FITTING -> if (registeredDemoSide != null) RegisteredBraceScreen(
             side = requireNotNull(registeredDemoSide),
             onHome = { pageName = AppPage.HOME.name },
@@ -243,6 +267,11 @@ private fun AuthenticatedApp(
                 braceSide = registeredDemoSide,
                 guideDescription = sessionState.guideTiming.description,
                 onConfigure = { showGuideSettings = true },
+                onOpenCenter = if (onSignOut != null) ({ pageName = AppPage.CENTER.name }) else null,
+                planSource = sessionState.appliedPlan?.let { plan ->
+                    val name = centerState.snapshot?.centers?.find { it.id == plan.centerId }?.name ?: plan.centerId
+                    "$name · 적용 시작 ${plan.effectiveFrom} · 작성 ${plan.createdAt.take(10)}"
+                },
                 onOpenFitting = { pageName = AppPage.FITTING.name },
                 sessionRefreshPending = auth.sessionRefreshPending,
                 onStartExercise = {
@@ -280,4 +309,5 @@ private fun AuthenticatedApp(
         }
     }
 }
+
 
