@@ -64,7 +64,11 @@ class BleEmgDataSource(
         override fun run() {
             val current = gatt ?: return
             if (_connectionState.value !is EmgConnectionState.Connected) return
-            runCatching { current.readRemoteRssi() }
+            try { current.readRemoteRssi() }
+            catch (_: SecurityException) {
+                failConnection("블루투스 연결 권한이 해제됐어요. 다시 허용해 주세요.")
+                return
+            }
             handler.postDelayed(this, 3000)
         }
     }
@@ -90,12 +94,12 @@ class BleEmgDataSource(
                 connectContinuation = continuation
                 continuation.invokeOnCancellation {
                     onMain {
-                            if (generation == attempt) {
-                                stopScan()
-                                closeGatt()
-                                connectContinuation = null
-                                _connectionState.value = EmgConnectionState.Disconnected
-                            }
+                        if (generation == attempt) {
+                            stopScan()
+                            closeGatt()
+                            connectContinuation = null
+                            _connectionState.value = EmgConnectionState.Disconnected
+                        }
                     }
                 }
                 val address = config.deviceAddress

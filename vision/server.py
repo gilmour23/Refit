@@ -34,7 +34,10 @@ def validated_session(value: str, prefix: str) -> str:
     session = value.strip() or prefix + uuid.uuid4().hex
     if not re.fullmatch(r"[\w-]{1,80}", session):
         raise HTTPException(400, "측정 ID에는 문자·숫자·밑줄·하이픈만 사용할 수 있어요")
-    if (LOG_DIR / session).exists():
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        (LOG_DIR / session).mkdir(exist_ok=False)
+    except FileExistsError:
         raise HTTPException(409, "이미 사용한 측정 ID예요. 새 ID로 다시 측정해 주세요")
     return session
 
