@@ -2,7 +2,7 @@
 
 Requested scope: a working demonstration before the measurement algorithm and hardware CAD are final.
 
-Home → 보조기 제작 체험 → left/right selection → two local images or explicit example drawings → movable wrist guide lines → synthetic dimensions → rotatable open-cuff preview → optional JSON/STL export.
+Bottom navigation: 홈 · 보조기 · 운동 기록. The 보조기 tab is a primary app destination, reachable from Home and History without scrolling. It opens left/right selection → two local images or explicit example drawings → movable wrist guide lines → synthetic dimensions → rotatable open-cuff preview → optional JSON/STL export. It is not presented as an extra experience card below recent history.
 
 The source is based on `chore/offline-demo-20261101` at `08c75268f12ccad42696a4e57388ce7ece2f0745`. Existing exercise, login-free startup and local exercise history are reused without changing their data model.
 
@@ -19,4 +19,4 @@ Android Studio:
 git -c http.version=HTTP/1.1 fetch origin
 git switch chore/wrist-fitting-demo-20261101
 ```
-Run `app` on the existing emulator. Scroll below recent exercise history to open `보조기 제작 체험`. Choose `사진 없이 예시로 체험` if no photos are available.
+Run `app` on the existing emulator. Select the bottom `보조기` tab. Choose `예시 그림으로 진행` if no photos are available. The UI retains explicit sample-data notices; moving the feature into primary navigation does not make the dimensions image-derived or the model a finalized orthosis.

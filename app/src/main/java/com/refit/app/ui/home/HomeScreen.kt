@@ -21,7 +21,7 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
     Page("오늘의 손목 운동", topAction = {
         if (onSignOut != null) TextButton({ showAccount = true }) { Text("계정") }
     },
-        footer = { BottomTabs("home", {}, onOpenHistory) }) {
+        footer = { BottomTabs("home", {}, onOpenHistory, onOpenFitting) }) {
         if (onSignOut == null) Hint("로그인 없이 체험 중 · 기록은 이 기기에만 저장됩니다.")
         if (!compact) Hint("차근차근, 오늘도 함께해요.")
         if (sessionRefreshPending) Hint("계정 연결을 복구 중입니다. 기록은 이 기기에 저장됩니다.")
@@ -50,10 +50,6 @@ fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                 if (latest.pain != null || latest.fatigue != null) Hint(listOfNotNull(latest.pain?.let { "통증 · $it" }, latest.fatigue?.let { "피로 · $it" }).joinToString("  /  "))
             }
         }
-        HorizontalDivider()
-        Text("내 손목에 맞는 보조기", style = MaterialTheme.typography.titleMedium)
-        Hint("사진과 함께 맞춤 제작 과정을 체험해 보세요.")
-        SecondaryAction("보조기 제작 체험", onOpenFitting)
     }
     if (showAccount && onSignOut != null) AlertDialog(onDismissRequest = { showAccount = false }, title = { Text("내 계정") },
         text = { Text(email ?: "로그인한 계정") },

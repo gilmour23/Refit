@@ -41,7 +41,7 @@ import kotlin.math.*
 private const val DEMO_NOTICE = "데모 · 예시 치수 / 임시 모델"
 
 @Composable
-fun FittingDemoScreen(onBack: () -> Unit) {
+fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)? = null, onBack: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
     var side by rememberSaveable { mutableStateOf<String?>(null) }
     var topUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -91,9 +91,9 @@ fun FittingDemoScreen(onBack: () -> Unit) {
     }
     val jsonExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { export(it, "json") }
     val stlExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { export(it, "stl") }
-    val titles = listOf("맞춤 보조기 제작", "사진 준비", "손목 위치 확인", "치수 확인", "보조기 미리보기")
+    val titles = listOf("보조기 제작", "사진 등록", "손목 위치 확인", "치수 확인", "보조기 미리보기")
     key(step) {
-    Page(titles[step], onBack = leave, footer = {
+    Page(titles[step], onBack = if (step == 0) null else leave, footer = {
         if (step < 4) PrimaryAction(when(step) {
             0 -> "사진 준비하기"
             1 -> "손목 위치 확인하기"
@@ -105,15 +105,16 @@ fun FittingDemoScreen(onBack: () -> Unit) {
             else -> true
         })
         else PrimaryAction("홈으로 돌아가기", onBack, !writing)
+        if (step == 0) BottomTabs("fitting", onHome ?: onBack, onOpenHistory ?: onBack, {})
     }) {
-        Text("제작 체험  ${step + 1} / 5", color = Accent, style = MaterialTheme.typography.bodySmall)
-        Text(DEMO_NOTICE, color = Accent, style = MaterialTheme.typography.bodyMedium)
+        if (step > 0) Text("제작 단계  ${step + 1} / 5", color = Accent, style = MaterialTheme.typography.bodySmall)
+        if (step >= 2) Text(DEMO_NOTICE, color = Accent, style = MaterialTheme.typography.bodyMedium)
         when (step) {
             0 -> {
-                Hint("사진으로 치수를 확인하고 보조기를 만드는 과정을 체험해 보세요.")
-                CuffPreview(yaw, pitch, { y, p -> yaw = y; pitch = p }, Modifier.height(210.dp))
                 Text("어느 쪽 손목인가요?", style = MaterialTheme.typography.titleMedium)
                 ChoiceRow(listOf("왼쪽 손목", "오른쪽 손목"), side, { side = it })
+                Hint("손목 사진을 등록하고 치수와 보조기 모델을 확인하세요.")
+                CuffPreview(yaw, pitch, { y, p -> yaw = y; pitch = p }, Modifier.height(160.dp))
                 Hint("사진 분석은 아직 연결 전입니다. 선택한 사진과 관계없이 동일한 예시 치수와 손목 커프가 표시됩니다.")
             }
             1 -> {
@@ -130,14 +131,14 @@ fun FittingDemoScreen(onBack: () -> Unit) {
                         OutlinedButton({ sidePicker.launch(arrayOf("image/*")) }, Modifier.fillMaxWidth()) { Text("사진 선택") }
                     }
                 }
-                SecondaryAction(if (usingExample) "✓ 예시 그림 사용 중" else "사진 없이 예시로 체험", {
+                SecondaryAction(if (usingExample) "✓ 예시 그림 사용 중" else "예시 그림으로 진행", {
                     usingExample = true; topY = .48f; sideY = .48f
                 })
                 Hint("선택한 사진은 서버로 전송하지 않습니다. 사진이 없는 에뮬레이터에서는 예시 그림으로 진행할 수 있어요.")
             }
             2 -> {
                 ChoiceRow(listOf("위 사진", "옆 사진"), if (selectedView == 0) "위 사진" else "옆 사진", { selectedView = if (it == "위 사진") 0 else 1 })
-                Hint("사진을 눌러 손목 기준선을 옮겨보세요. 이 단계는 위치 확인 체험이며, 선의 위치로 치수를 계산하지는 않습니다.")
+                Hint("사진을 눌러 손목 기준선을 옮겨주세요. 현재 기준선은 위치 확인용이며 치수 계산에는 아직 연결되지 않았습니다.")
                 PhotoGuide(if (usingExample) null else if (selectedView == 0) topUri else sideUri,
                     selectedView == 1, if (selectedView == 0) topY else sideY,
                     { if (selectedView == 0) topY = it else sideY = it }, Modifier.height(300.dp))

@@ -185,7 +185,11 @@ private fun AuthenticatedApp(
     }
 
     when (page) {
-        AppPage.FITTING -> FittingDemoScreen(onBack = { pageName = AppPage.HOME.name })
+        AppPage.FITTING -> FittingDemoScreen(
+            onHome = { pageName = AppPage.HOME.name },
+            onOpenHistory = { pageName = AppPage.HISTORY.name },
+            onBack = { pageName = AppPage.HOME.name }
+        )
         AppPage.HOME -> {
             HomeScreen(
                 email = auth.email,
@@ -221,6 +225,7 @@ private fun AuthenticatedApp(
                 syncMessage = sessionState.syncMessage,
                 onRetrySync = sessionViewModel::retrySync,
                 cloudSyncEnabled = onSignOut != null,
+                onOpenFitting = { pageName = AppPage.FITTING.name },
                 onBack = {
                     pageName = AppPage.HOME.name
                 }

@@ -101,10 +101,17 @@ class OfflineDemoLaunchTest {
 
     @Test fun offlineHomeOpensAndReturnsFromFittingWithoutLogin() {
         awaitText("운동 준비하기")
-        compose.onNodeWithText("보조기 제작 체험").performScrollTo().performClick()
-        compose.onNodeWithText("맞춤 보조기 제작").assertIsDisplayed()
+        compose.onNodeWithText("보조기 제작 체험").assertDoesNotExist()
+        compose.onNodeWithText("보조기").assertIsDisplayed().performClick()
+        compose.onNodeWithText("보조기 제작").assertIsDisplayed()
         compose.onNodeWithText("로그인", useUnmergedTree = true).assertDoesNotExist()
-        compose.onNodeWithText("‹ 뒤로").performClick()
+        compose.activityRule.scenario.recreate()
+        awaitText("보조기 제작")
+        compose.onNodeWithText("운동 기록").assertIsDisplayed().performClick()
+        awaitText("이 기기에 저장된 데모 기록입니다.")
+        compose.onNodeWithText("보조기").assertIsDisplayed().performClick()
+        compose.onNodeWithText("보조기 제작").assertIsDisplayed()
+        compose.onNodeWithText("홈").assertIsDisplayed().performClick()
         awaitText("운동 준비하기")
         compose.onNodeWithText("운동 준비하기").assertIsEnabled()
     }
