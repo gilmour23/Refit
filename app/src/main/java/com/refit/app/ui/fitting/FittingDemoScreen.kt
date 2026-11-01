@@ -47,7 +47,6 @@ fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () ->
     var pitch by rememberSaveable { mutableFloatStateOf(15f) }
     BackHandler(onBack = onHome)
     Page("내 보조기", footer = {
-        PrimaryAction("재활 홈으로", onHome)
         BottomTabs("fitting", onHome, onOpenHistory, {})
     }) {
         Text("등록된 보조기", style = MaterialTheme.typography.titleMedium)
