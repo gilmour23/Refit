@@ -41,7 +41,8 @@ import kotlin.math.*
 private const val DEMO_NOTICE = "데모 · 예시 치수 / 임시 모델"
 
 @Composable
-fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () -> Unit) {
+fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () -> Unit,
+                          onCreateNew: () -> Unit = {}) {
     var yaw by rememberSaveable { mutableFloatStateOf(-30f) }
     var pitch by rememberSaveable { mutableFloatStateOf(15f) }
     BackHandler(onBack = onHome)
@@ -52,6 +53,7 @@ fun RegisteredBraceScreen(side: String, onHome: () -> Unit, onOpenHistory: () ->
         Text("등록된 보조기", style = MaterialTheme.typography.titleMedium)
         LabelValue("사용 부위", if (side == "left") "왼쪽 손목" else "오른쪽 손목")
         LabelValue("등록 상태", "시연용 보조기 등록됨")
+        PrimaryAction("새 보조기 제작", onCreateNew)
         CuffPreview(yaw, pitch, { y, p -> yaw = y; pitch = p }, Modifier.height(210.dp))
         Text(DEMO_NOTICE, color = Accent)
         Hint("등록한 시연용 보조기입니다. 사진 분석과 실제 제작 완료를 확인한 상태는 아닙니다.")
@@ -117,7 +119,7 @@ fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)?
     val stlExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { export(it, "stl") }
     val titles = listOf("보조기 제작", "사진 등록", "손목 위치 확인", "치수 확인", "보조기 미리보기")
     key(step) {
-    Page(titles[step], onBack = if (step == 0) null else leave, footer = {
+    Page(titles[step], onBack = if (step == 0 && setupRequired) null else leave, footer = {
         if (step < 4) PrimaryAction(when(step) {
             0 -> "사진 준비하기"
             1 -> "손목 위치 확인하기"

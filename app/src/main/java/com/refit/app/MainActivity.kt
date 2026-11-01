@@ -53,7 +53,8 @@ private enum class AppPage {
     HOME,
     SESSION,
     HISTORY,
-    FITTING
+    FITTING,
+    CREATE_BRACE
 }
 
 class MainActivity : ComponentActivity() {
@@ -183,6 +184,14 @@ private fun AuthenticatedApp(
     }
     // A restored HOME/SESSION route cannot bypass first-time brace setup.
     val page = if (registeredDemoSide == null) AppPage.FITTING else AppPage.valueOf(pageName)
+    val registerDemoBrace: suspend (String) -> Boolean = { side ->
+        val saved = withContext(Dispatchers.IO) { runCatching { braceStore.registerDemo(auth.userId, side) } }
+        if (saved.isSuccess) {
+            registeredDemoSide = side
+            pageName = AppPage.HOME.name
+        }
+        saved.isSuccess
+    }
 
     val sessionViewModel: SessionViewModel = viewModel(
         viewModelStoreOwner = accountOwner,
@@ -212,18 +221,19 @@ private fun AuthenticatedApp(
         AppPage.FITTING -> if (registeredDemoSide != null) RegisteredBraceScreen(
             side = requireNotNull(registeredDemoSide),
             onHome = { pageName = AppPage.HOME.name },
-            onOpenHistory = { pageName = AppPage.HISTORY.name }
+            onOpenHistory = { pageName = AppPage.HISTORY.name },
+            onCreateNew = { pageName = AppPage.CREATE_BRACE.name }
         ) else FittingDemoScreen(
             setupRequired = true,
-            onRegisterDemo = { side ->
-                val saved = withContext(Dispatchers.IO) { runCatching { braceStore.registerDemo(auth.userId, side) } }
-                if (saved.isSuccess) {
-                    registeredDemoSide = side
-                    pageName = AppPage.HOME.name
-                }
-                saved.isSuccess
-            },
+            onRegisterDemo = registerDemoBrace,
             onBack = { pageName = AppPage.HOME.name }
+        )
+        AppPage.CREATE_BRACE -> FittingDemoScreen(
+            setupRequired = false,
+            onRegisterDemo = registerDemoBrace,
+            onHome = { pageName = AppPage.HOME.name },
+            onOpenHistory = { pageName = AppPage.HISTORY.name },
+            onBack = { pageName = AppPage.FITTING.name }
         )
         AppPage.HOME -> {
             HomeScreen(

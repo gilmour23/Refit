@@ -76,13 +76,16 @@ class FittingDemoTest {
         assertEquals(0, exits)
     }
 
-    @Test fun registeredBraceShowsDetailsAndNeverShowsCreationActions() {
+    @Test fun registeredBraceShowsDetailsAndOffersExplicitNewCreation() {
         var home = 0
-        compose.setContent { ReFitTheme { RegisteredBraceScreen("right", { home++ }, {}) } }
+        var creation = 0
+        compose.setContent { ReFitTheme { RegisteredBraceScreen("right", { home++ }, {}, { creation++ }) } }
         compose.onNodeWithText("내 보조기").assertIsDisplayed()
         compose.onNodeWithText("오른쪽 손목").assertExists()
         compose.onNodeWithText("사진 준비하기").assertDoesNotExist()
         compose.onNodeWithText("보조기 제작").assertDoesNotExist()
+        compose.onNodeWithText("새 보조기 제작").assertIsDisplayed().performClick()
+        assertEquals(1, creation)
         capture("26-registered-brace")
         compose.onNodeWithText("재활 홈으로").performClick()
         assertEquals(1, home)

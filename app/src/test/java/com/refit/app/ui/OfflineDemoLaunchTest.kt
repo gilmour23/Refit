@@ -134,9 +134,31 @@ class OfflineDemoLaunchTest {
         compose.onNodeWithText("운동 준비하기").assertIsEnabled()
     }
 
-    private fun completeBraceSetup() {
+    @Test fun explicitNewCreationCanBeCancelledWithoutLosingTheRegisteredBrace() {
+        completeBraceSetup()
+        compose.onNodeWithText("보조기").performClick()
+        compose.onNodeWithText("새 보조기 제작").assertIsDisplayed().performClick()
         awaitText("보조기 제작")
-        compose.onNodeWithText("왼쪽 손목").performScrollTo().performClick()
+        compose.onNodeWithText("사진 준비하기").assertIsNotEnabled()
+        compose.onNodeWithText("‹ 뒤로").performClick()
+        awaitText("내 보조기")
+        compose.onNodeWithText("왼쪽 손목").assertExists()
+        compose.activityRule.scenario.recreate()
+        awaitText("내 보조기")
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        assertEquals("left", BraceSetupStore(app).readDemoSide("__offline_demo_v1__"))
+        compose.onNodeWithText("새 보조기 제작").performClick()
+        completeBraceSetup("오른쪽 손목")
+        compose.onNodeWithText("보조기").performClick()
+        awaitText("내 보조기")
+        compose.onNodeWithText("오른쪽 손목").assertExists()
+        assertEquals("right", BraceSetupStore(app).readDemoSide("__offline_demo_v1__"))
+        compose.onNodeWithText("사진 준비하기").assertDoesNotExist()
+    }
+
+    private fun completeBraceSetup(side: String = "왼쪽 손목") {
+        awaitText("보조기 제작")
+        compose.onNodeWithText(side).performScrollTo().performClick()
         compose.onNodeWithText("사진 준비하기").performClick()
         compose.onNodeWithText("예시 그림으로 진행").performScrollTo().performClick()
         compose.onNodeWithText("손목 위치 확인하기").performClick()
