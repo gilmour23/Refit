@@ -33,6 +33,10 @@ class BraceSetupStoreTest {
             override fun edit(): SharedPreferences.Editor {
                 val actual = prefs.edit()
                 return object : SharedPreferences.Editor by actual {
+                    override fun putString(key: String?, value: String?): SharedPreferences.Editor {
+                        actual.putString(key, value)
+                        return this
+                    }
                     override fun commit(): Boolean {
                         // Expose Android's memory-before-result behavior, with actual shared state.
                         val result = actual.commit()
