@@ -66,9 +66,10 @@ class SessionViewModel(
         ReFitDatabase.getInstance(application).rehabSessionDao()
     ),
     private val syncCoordinator: SessionSyncCoordinator = SessionSyncCoordinator(repository),
-    private val centerRemote: com.refit.app.data.remote.PatientCenterGateway = com.refit.app.data.remote.PatientCenterRemoteDataSource()
+    private val centerRemote: com.refit.app.data.remote.PatientCenterGateway? = null
 ) : AndroidViewModel(application) {
     private val realtimeWindow = RealtimeEmgWindow(realtimeWindowSize)
+    private val patientCenter by lazy { centerRemote ?: com.refit.app.data.remote.PatientCenterRemoteDataSource() }
 
     private val preferences = application.getSharedPreferences("guide-$userId", android.content.Context.MODE_PRIVATE)
     private val initialTiming = runCatching { GuideTiming(preferences.getInt("attempt", 4),
@@ -218,7 +219,7 @@ class SessionViewModel(
         if (selected == null) { startVerifiedSession(); return }
         _uiState.update { it.copy(isConnecting = true, message = "센터 계획을 확인하고 있어요.") }
         planVerificationJob = viewModelScope.launch {
-            val active = try { centerRemote.read(userId).activePlan }
+            val active = try { patientCenter.read(userId).activePlan }
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { null }
             _uiState.update { it.copy(isConnecting = false) }
@@ -233,7 +234,12 @@ class SessionViewModel(
     private fun startVerifiedSession() {
         restoreManualGuidanceIfNeeded()
         _uiState.value.appliedPlan?.let {
-            if (!it.isActiveFor(userId, java.time.LocalDate.now())) reconcileClinicianPlan(null)
+            if (!it.isActiveFor(userId, java.time.LocalDate.now())) {
+                reconcileClinicianPlan(null)
+                restoreManualGuidanceIfNeeded()
+                _uiState.update { state -> state.copy(message = "계획 적용 날짜가 바뀌었어요. 오늘의 계획을 다시 확인해 주세요.") }
+                return
+            }
         }
         if (!_uiState.value.storageAvailable) return
         if (_uiState.value.running || _uiState.value.isConnecting || _uiState.value.isSaving) return

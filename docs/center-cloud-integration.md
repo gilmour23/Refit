@@ -2,6 +2,10 @@
 
 Source baseline: gilmour23/Refit chore/wrist-fitting-demo-20261101 at 781a6eb2565dd2142a19551638b1413787931f64. This preserves offline demonstration, first-use brace setup, registered brace details and explicit new-brace flow.
 
+## Server prerequisite
+
+The center-care additive migration must be applied before using this app's online integration. The repository's older supabase/schema.sql alone provides only summary sessions and cannot create center links, plans or signal uploads. The center web integration owns migration 20261101080949_center_patient_care.sql (SHA256 a7bb5d023457ad17cedaf1fcc2fcaa1cfdc7b41ede88960f3538cf5b1e9a6674), with owner/center RLS, explicit-consent RPCs and immutable clinician plan history. Existing rows remain unknown/no-raw. This Android branch does not change database permissions or grant staff access.
+
 ## Data contract
 
 The authenticated owner upserts public.rehab_sessions using user_id,client_local_id. Existing summary fields remain. Nullable planned_attempts,completed_attempts,attempt_seconds,rest_seconds,ended_early,wrist_side and original comfort_response,pain_response,fatigue_response are uploaded. Categorical responses are never fabricated as numeric scores. data_mode maps demo to demo, sensor/device to device, and every unknown historical value to unknown. Only newly recorded provenance sets source_device and source_app_version.

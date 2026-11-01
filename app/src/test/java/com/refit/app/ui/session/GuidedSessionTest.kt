@@ -458,6 +458,21 @@ class GuidedSessionTest {
             assertNull(other.uiState.value.appliedPlan)
             assertEquals(GuideTiming(4, 6, 3), other.uiState.value.guideTiming)
             assertEquals(1, connections)
+            val staleResponse = CompletableDeferred<com.refit.app.data.remote.PatientCenterSnapshot>()
+            val staleGateway = object : com.refit.app.data.remote.PatientCenterGateway {
+                override suspend fun read(owner: String, today: java.time.LocalDate) = staleResponse.await()
+                override suspend fun acceptInvite(owner: String, code: String, consent: Boolean): com.refit.app.data.remote.CenterLinkDto = error("unused")
+                override suspend fun revoke(owner: String, centerId: String) = error("unused")
+            }
+            val invalidated = SessionViewModel(app, "verify-owner", Source(onConnect = { connections++ }), repository = repo,
+                syncCoordinator = SessionSyncCoordinator(repo, RehabSessionRemoteDataSource(null)), centerRemote = staleGateway)
+            store.put("invalidated", invalidated); invalidated.configureWristSide("left")
+            invalidated.applyClinicianPlan(plan); invalidated.startSession()
+            invalidated.reconcileClinicianPlan(null)
+            staleResponse.complete(com.refit.app.data.remote.PatientCenterSnapshot(emptyList(), emptyList(), plan))
+            runCurrent()
+            assertFalse(invalidated.uiState.value.running)
+            assertEquals(1, connections)
         } finally { store.clear(); db.close(); Dispatchers.resetMain() }
     }
 
