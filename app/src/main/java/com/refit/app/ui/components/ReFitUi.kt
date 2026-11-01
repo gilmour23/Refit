@@ -136,14 +136,31 @@ fun ChoiceRow(options: List<String>, selected: String?, onChoose: (String) -> Un
 }
 
 @Composable
-fun BottomTabs(selected: String, onHome: () -> Unit, onHistory: () -> Unit) {
+fun BottomTabs(selected: String, onHome: () -> Unit, onHistory: () -> Unit, onFitting: () -> Unit = {}) {
     NavigationBar(containerColor = PageBackground, windowInsets = WindowInsets(0, 0, 0, 0), tonalElevation = 0.dp) {
         NavigationBarItem(selected == "home", onHome,
             icon = { NavigationGlyph(false, if (selected == "home") Accent else Muted) }, label = { Text("홈", style = MaterialTheme.typography.bodySmall) },
             colors = NavigationBarItemDefaults.colors(indicatorColor = AccentSurface))
+        NavigationBarItem(selected == "fitting", onFitting,
+            icon = { CuffNavigationGlyph(if (selected == "fitting") Accent else Muted) }, label = { Text("보조기", style = MaterialTheme.typography.bodySmall) },
+            colors = NavigationBarItemDefaults.colors(indicatorColor = AccentSurface))
         NavigationBarItem(selected == "history", onHistory,
             icon = { NavigationGlyph(true, if (selected == "history") Accent else Muted) }, label = { Text("운동 기록", style = MaterialTheme.typography.bodySmall) },
             colors = NavigationBarItemDefaults.colors(indicatorColor = AccentSurface))
+    }
+}
+
+@Composable
+private fun CuffNavigationGlyph(color: Color) {
+    Canvas(Modifier.size(24.dp)) {
+        val s = size.width / 24f
+        val path = Path().apply {
+            moveTo(8*s, 3*s); lineTo(5*s, 21*s); lineTo(11*s, 21*s); lineTo(10*s, 3*s)
+            moveTo(14*s, 3*s); lineTo(13*s, 21*s); lineTo(19*s, 21*s); lineTo(16*s, 3*s)
+            moveTo(7*s, 8*s); lineTo(17*s, 8*s)
+            moveTo(6*s, 16*s); lineTo(18*s, 16*s)
+        }
+        drawPath(path, color, style = Stroke(1.8f*s))
     }
 }
 
@@ -176,4 +193,5 @@ fun SummaryStat(label: String, value: String, modifier: Modifier = Modifier) {
 fun formatTime(seconds: Long) = "%02d:%02d".format(seconds / 60, seconds % 60)
 fun formatDate(timestamp: Long, pattern: String = "M월 d일 · HH:mm"): String =
     Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(pattern, java.util.Locale.KOREAN))
+
 

@@ -15,16 +15,21 @@ import com.refit.app.ui.session.WristIllustration
 @Composable
 fun HomeScreen(email: String?, sessionRefreshPending: Boolean = false,
                sessions: List<RehabSessionEntity> = emptyList(), wristSide: String? = null, guideDescription: String = "시도 4초 · 휴식 6초 · 3회",
-               onConfigure: () -> Unit = {}, onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: (() -> Unit)?) {
+               onConfigure: () -> Unit = {}, onOpenFitting: () -> Unit = {}, braceSide: String? = null,
+               onStartExercise: () -> Unit, onOpenHistory: () -> Unit, onSignOut: (() -> Unit)?) {
     var showAccount by remember { mutableStateOf(false) }
     val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 720 || androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.4f
     Page("오늘의 손목 운동", topAction = {
         if (onSignOut != null) TextButton({ showAccount = true }) { Text("계정") }
     },
-        footer = { BottomTabs("home", {}, onOpenHistory) }) {
+        footer = { BottomTabs("home", {}, onOpenHistory, onOpenFitting) }) {
         if (onSignOut == null) Hint("로그인 없이 체험 중 · 기록은 이 기기에만 저장됩니다.")
         if (!compact) Hint("차근차근, 오늘도 함께해요.")
         if (sessionRefreshPending) Hint("계정 연결을 복구 중입니다. 기록은 이 기기에 저장됩니다.")
+        braceSide?.let {
+            LabelValue("내 보조기 · 시연 등록", if (it == "left") "왼쪽 손목" else "오른쪽 손목")
+            Hint("실제 제작 완료 상태가 아닌 시연용 등록입니다.")
+        }
         Panel(color = AccentSurface) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("손목 펴기", style = MaterialTheme.typography.titleLarge, color = Ink)

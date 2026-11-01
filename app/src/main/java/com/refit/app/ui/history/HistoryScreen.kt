@@ -18,7 +18,8 @@ import com.refit.app.ui.result.SignalDetails
 
 @Composable
 fun HistoryScreen(sessions: List<RehabSessionEntity>, onBack: () -> Unit, isSyncing: Boolean,
-                  syncMessage: String?, onRetrySync: () -> Unit, cloudSyncEnabled: Boolean = true) {
+                  syncMessage: String?, onRetrySync: () -> Unit, cloudSyncEnabled: Boolean = true,
+                  onOpenFitting: () -> Unit = {}) {
     var selectedId by rememberSaveable { mutableStateOf<Long?>(null) }
     val selected = sessions.firstOrNull { it.id == selectedId }
     if (selected != null) {
@@ -28,7 +29,7 @@ fun HistoryScreen(sessions: List<RehabSessionEntity>, onBack: () -> Unit, isSync
     }
     BackHandler(onBack = onBack)
     val pending = sessions.count { it.syncStatus != SyncStatus.SYNCED }
-    Page("운동 기록", footer = { BottomTabs("history", onBack, {}) }) {
+    Page("운동 기록", footer = { BottomTabs("history", onBack, {}, onOpenFitting) }) {
         if (!cloudSyncEnabled) Hint("이 기기에 저장된 데모 기록입니다.")
         if (sessions.isEmpty()) Panel {
             Text("아직 운동 기록이 없어요", style = MaterialTheme.typography.titleMedium)
