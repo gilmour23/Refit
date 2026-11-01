@@ -59,6 +59,23 @@ class FittingDemoTest {
         compose.onNodeWithText("✓ 오른쪽 손목").assertExists()
     }
 
+    @Test fun requiredSetupHasNoNavigationBypassAndFailedRegistrationStaysAtTheModel() {
+        var exits = 0
+        compose.setContent { ReFitTheme { FittingDemoScreen(setupRequired = true, onRegisterDemo = { false }, onBack = { exits++ }) } }
+        compose.onNodeWithText("홈").assertDoesNotExist()
+        compose.onNodeWithText("운동 기록").assertDoesNotExist()
+        capture("25-brace-first-start")
+        compose.onNodeWithText("왼쪽 손목").performScrollTo().performClick()
+        compose.onNodeWithText("사진 준비하기").performClick()
+        compose.onNodeWithText("예시 그림으로 진행").performScrollTo().performClick()
+        compose.onNodeWithText("손목 위치 확인하기").performClick()
+        compose.onNodeWithText("예시 치수 보기").performClick()
+        compose.onNodeWithText("임시 모델 미리보기").performClick()
+        compose.onNodeWithText("시연용 보조기 등록하고 운동으로").performClick()
+        compose.onNodeWithText("등록을 저장하지 못했어요. 다시 시도해 주세요.").assertExists()
+        assertEquals(0, exits)
+    }
+
     private fun capture(name: String) {
         System.setProperty("roborazzi.test.record", "true")
         val dir = File("build/outputs/patient-screens").also { it.mkdirs() }

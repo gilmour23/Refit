@@ -2,7 +2,9 @@
 
 Requested scope: a working demonstration before the measurement algorithm and hardware CAD are final.
 
-Bottom navigation: 홈 · 보조기 · 운동 기록. The 보조기 tab is a primary app destination, reachable from Home and History without scrolling. It opens left/right selection → two local images or explicit example drawings → movable wrist guide lines → synthetic dimensions → rotatable open-cuff preview → optional JSON/STL export. It is not presented as an extra experience card below recent history.
+First use opens brace preparation, not exercise Home. Until a brace setup record exists for the current owner, restored Home/Session routes are gated, and the setup screen has no Home/History tabs to bypass it. The flow is left/right selection → two local images or example drawings → wrist guide lines → synthetic dimensions → rotatable open-cuff model and optional JSON/STL export → explicit demo brace registration → exercise Home. After registration the bottom navigation is 홈 · 보조기 · 운동 기록.
+
+The record is explicitly `demo`, not physical manufacture completion. It stores only side and mode in private local preferences under an owner hash, without photos or real body dimensions. Commit must succeed before exercise is unlocked. Load failure leaves exercise locked and offers retry. Registration persists across activity recreation and process restart; a new owner's setup is independent. Exercise preparation defaults to the registered wrist. Real production will require a separate verified physical-brace readiness state before real exercise; that is not simulated by this prototype.
 
 The source is based on `chore/offline-demo-20261101` at `08c75268f12ccad42696a4e57388ce7ece2f0745`. Existing exercise, login-free startup and local exercise history are reused without changing their data model.
 
@@ -19,4 +21,4 @@ Android Studio:
 git -c http.version=HTTP/1.1 fetch origin
 git switch chore/wrist-fitting-demo-20261101
 ```
-Run `app` on the existing emulator. Select the bottom `보조기` tab. Choose `예시 그림으로 진행` if no photos are available. The UI retains explicit sample-data notices; moving the feature into primary navigation does not make the dimensions image-derived or the model a finalized orthosis.
+Run `app` on the existing emulator. A user without a setup record starts at brace preparation. Choose `예시 그림으로 진행` if no photos are available, complete the model step, then explicitly register the demo brace to reach exercise Home. The UI retains sample-data notices; registration does not mean that a physical orthosis has been manufactured.

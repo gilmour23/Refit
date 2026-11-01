@@ -41,7 +41,9 @@ import kotlin.math.*
 private const val DEMO_NOTICE = "데모 · 예시 치수 / 임시 모델"
 
 @Composable
-fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)? = null, onBack: () -> Unit) {
+fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)? = null,
+                      setupRequired: Boolean = false, onRegisterDemo: (suspend (String) -> Boolean)? = null,
+                      onBack: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
     var side by rememberSaveable { mutableStateOf<String?>(null) }
     var topUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -57,7 +59,7 @@ fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)?
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val leave: () -> Unit = { if (step > 0) step-- else onBack() }
-    BackHandler(onBack = leave)
+    BackHandler(enabled = step > 0 || !setupRequired, onBack = leave)
 
     val topPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) { topUri = uri.toString(); usingExample = false; topY = .48f }
@@ -104,13 +106,25 @@ fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)?
             1 -> usingExample || (topUri != null && sideUri != null)
             else -> true
         })
+        else if (onRegisterDemo != null) PrimaryAction("시연용 보조기 등록하고 운동으로", {
+            writing = true
+            scope.launch {
+                val saved = runCatching { onRegisterDemo(if (side == "왼쪽 손목") "left" else "right") }.getOrDefault(false)
+                writing = false
+                if (!saved) message = "등록을 저장하지 못했어요. 다시 시도해 주세요."
+            }
+        }, !writing)
         else PrimaryAction("홈으로 돌아가기", onBack, !writing)
-        if (step == 0) BottomTabs("fitting", onHome ?: onBack, onOpenHistory ?: onBack, {})
+        if (step == 0 && !setupRequired) BottomTabs("fitting", onHome ?: onBack, onOpenHistory ?: onBack, {})
     }) {
         if (step > 0) Text("제작 단계  ${step + 1} / 5", color = Accent, style = MaterialTheme.typography.bodySmall)
         if (step >= 2) Text(DEMO_NOTICE, color = Accent, style = MaterialTheme.typography.bodyMedium)
         when (step) {
             0 -> {
+                if (setupRequired) {
+                    Text("먼저 내 보조기를 준비해 주세요", style = MaterialTheme.typography.titleMedium)
+                    Hint("사진 등록 → 치수 확인 → 모델 준비 → 보조기 등록을 마친 뒤 운동을 시작합니다.")
+                }
                 Text("어느 쪽 손목인가요?", style = MaterialTheme.typography.titleMedium)
                 ChoiceRow(listOf("왼쪽 손목", "오른쪽 손목"), side, { side = it })
                 Hint("손목 사진을 등록하고 치수와 보조기 모델을 확인하세요.")
@@ -165,6 +179,7 @@ fun FittingDemoScreen(onHome: (() -> Unit)? = null, onOpenHistory: (() -> Unit)?
                 Hint("드래그해서 회전해 보세요. 미리보기와 STL은 같은 예시 모델을 사용합니다.")
                 TextButton({ yaw = -30f; pitch = 15f }) { Text("처음 각도로") }
                 Hint("예시 치수로 만든 모형입니다. 실제 맞춤 보조기나 착용용 출력물로 사용할 수 없습니다. STL 크기 기준은 mm입니다.")
+                if (onRegisterDemo != null) Hint("아래 등록 버튼은 시연용 보조기를 저장하고 운동 데모를 엽니다. 실제 출력·제작 완료를 의미하지 않습니다.")
                 SecondaryAction("예시 치수 JSON 내보내기", { jsonExport.launch("ReFit_DEMO_dimensions.json") }, !writing)
                 SecondaryAction("데모 STL 내보내기", { stlExport.launch("ReFit_DEMO_cuff_mm.stl") }, !writing)
                 if (writing) LinearProgressIndicator(Modifier.fillMaxWidth())

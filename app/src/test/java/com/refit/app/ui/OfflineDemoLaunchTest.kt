@@ -11,6 +11,7 @@ import com.refit.app.data.local.RehabSessionEntity
 import com.refit.app.data.model.SyncStatus
 import com.refit.app.data.remote.SupabaseClientProvider
 import com.refit.app.security.SecurityTestApplication
+import com.refit.app.ui.fitting.BraceSetupStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Assume.assumeFalse
@@ -34,6 +35,7 @@ class OfflineDemoLaunchTest {
             (field.get(null) as? ReFitDatabase)?.close()
             field.set(null, null)
             ApplicationProvider.getApplicationContext<Application>().deleteDatabase("refit.db")
+            ApplicationProvider.getApplicationContext<Application>().getSharedPreferences(BraceSetupStore.PREFS_NAME, 0).edit().clear().commit()
             Robolectric.setupContentProvider(InitializationProvider::class.java)
         }
         override fun after() {
@@ -44,26 +46,35 @@ class OfflineDemoLaunchTest {
     }
     @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun unconfiguredLaunchAndRecreationReachExerciseWithoutAnAccount() {
-        awaitText("운동 준비하기")
-        compose.onNodeWithText("운동 준비하기").assertIsDisplayed().assertIsEnabled()
+    @Test fun firstLaunchRequiresBraceSetupAndKeepsItsRegistrationAfterRecreation() {
+        awaitText("보조기 제작")
+        compose.onNodeWithText("운동 준비하기").assertDoesNotExist()
+        compose.onNodeWithText("홈").assertDoesNotExist()
+        compose.onNodeWithText("운동 기록").assertDoesNotExist()
         compose.onNodeWithText("로그인", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithText("이메일").assertDoesNotExist()
         compose.onNodeWithText("계정").assertDoesNotExist()
         compose.activityRule.scenario.recreate()
+        awaitText("보조기 제작")
+        compose.onNodeWithText("운동 준비하기").assertDoesNotExist()
+        completeBraceSetup()
+        compose.activityRule.scenario.recreate()
         awaitText("운동 준비하기")
         compose.onNodeWithText("운동 준비하기").assertIsEnabled()
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        assertEquals("left", BraceSetupStore(app).readDemoSide("__offline_demo_v1__"))
+        assertNull(BraceSetupStore(app).readDemoSide("another-owner"))
     }
 
     @Test fun offlineHistoryIsSeparateFromAccountRecordsAndHasNoCloudActions() {
-        awaitText("운동 준비하기")
+        completeBraceSetup()
         val app = ApplicationProvider.getApplicationContext<Application>()
         val dao = ReFitDatabase.getInstance(app).rehabSessionDao()
         runBlocking {
             dao.insert(record("__offline_demo_v1__", "left"))
             dao.insert(record("7c65c147-5f27-4b43-8811-8209954a8a58", "right"))
         }
-        compose.onNodeWithText("전체 보기 ›").performClick()
+        compose.onNodeWithText("전체 보기 ›").performScrollTo().performClick()
         awaitText("왼쪽 손목")
         compose.onNodeWithText("오른쪽 손목").assertDoesNotExist()
         compose.onNodeWithText("다시 동기화").assertDoesNotExist()
@@ -72,10 +83,10 @@ class OfflineDemoLaunchTest {
     }
 
     @Test fun aDemoExerciseCanBeSavedAndReopenedWithoutSigningIn() {
-        awaitText("운동 준비하기")
-        compose.onNodeWithText("운동 준비하기").performClick()
-        compose.onNodeWithText("왼쪽 손목").performClick()
-        compose.onNodeWithText("다음").performClick()
+        completeBraceSetup()
+        compose.onNodeWithText("운동 준비하기").performScrollTo().performClick()
+        // Registration already supplies the wrist side; the preparation choice stays editable.
+        compose.onNodeWithText("팔을 받쳐주세요").assertExists()
         compose.onNodeWithText("다음").performClick()
         compose.onNodeWithText("데모 안내 시작").performClick()
         awaitText("운동 마치기")
@@ -94,13 +105,13 @@ class OfflineDemoLaunchTest {
         assertEquals("left", rows.single().wristSide)
         assertEquals(SyncStatus.LOCAL_ONLY, rows.single().syncStatus)
         assertNull(rows.single().remoteId)
-        compose.onNodeWithText("전체 보기 ›").performClick()
+        compose.onNodeWithText("전체 보기 ›").performScrollTo().performClick()
         awaitText("왼쪽 손목")
         compose.onNodeWithText("다시 동기화").assertDoesNotExist()
     }
 
     @Test fun offlineHomeOpensAndReturnsFromFittingWithoutLogin() {
-        awaitText("운동 준비하기")
+        completeBraceSetup()
         compose.onNodeWithText("보조기 제작 체험").assertDoesNotExist()
         compose.onNodeWithText("보조기").assertIsDisplayed().performClick()
         compose.onNodeWithText("보조기 제작").assertIsDisplayed()
@@ -114,6 +125,18 @@ class OfflineDemoLaunchTest {
         compose.onNodeWithText("홈").assertIsDisplayed().performClick()
         awaitText("운동 준비하기")
         compose.onNodeWithText("운동 준비하기").assertIsEnabled()
+    }
+
+    private fun completeBraceSetup() {
+        awaitText("보조기 제작")
+        compose.onNodeWithText("왼쪽 손목").performScrollTo().performClick()
+        compose.onNodeWithText("사진 준비하기").performClick()
+        compose.onNodeWithText("예시 그림으로 진행").performScrollTo().performClick()
+        compose.onNodeWithText("손목 위치 확인하기").performClick()
+        compose.onNodeWithText("예시 치수 보기").performClick()
+        compose.onNodeWithText("임시 모델 미리보기").performClick()
+        compose.onNodeWithText("시연용 보조기 등록하고 운동으로").performClick()
+        awaitText("운동 준비하기")
     }
 
     private fun awaitText(text: String) {

@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import com.refit.app.data.local.ReFitDatabase
 import com.refit.app.ui.components.Page
 import com.refit.app.ui.components.PrimaryAction
@@ -43,6 +44,7 @@ import com.refit.app.ui.session.GuideSettingsScreen
 import com.refit.app.ui.components.ReFitTheme
 import androidx.activity.compose.BackHandler
 import com.refit.app.ui.fitting.FittingDemoScreen
+import com.refit.app.ui.fitting.BraceSetupStore
 
 private const val LOCAL_DEMO_OWNER = "__offline_demo_v1__"
 
@@ -154,11 +156,32 @@ private fun AuthenticatedApp(
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
+    val braceStore = remember(application) { BraceSetupStore(application) }
+    var setupReload by remember(auth.userId) { mutableStateOf(0) }
+    var registeredDemoSide by remember(auth.userId) { mutableStateOf<String?>(null) }
+    val setupLoad by produceState<Result<String?>?>(null, auth.userId, setupReload) {
+        value = null
+        val loaded = withContext(Dispatchers.IO) { runCatching { braceStore.readDemoSide(auth.userId) } }
+        registeredDemoSide = loaded.getOrNull()
+        value = loaded
+    }
+    if (setupLoad == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
+    if (setupLoad!!.isFailure) {
+        Page("보조기 등록 정보를 열 수 없어요") {
+            Text("운동을 시작하기 전에 보조기 등록 정보를 확인해야 합니다.")
+            PrimaryAction("다시 확인", { setupReload++ })
+        }
+        return
+    }
 
     var pageName by rememberSaveable(auth.userId) {
-        mutableStateOf(AppPage.HOME.name)
+        mutableStateOf(if (registeredDemoSide == null) AppPage.FITTING.name else AppPage.HOME.name)
     }
-    val page = AppPage.valueOf(pageName)
+    // A restored HOME/SESSION route cannot bypass first-time brace setup.
+    val page = if (registeredDemoSide == null) AppPage.FITTING else AppPage.valueOf(pageName)
 
     val sessionViewModel: SessionViewModel = viewModel(
         viewModelStoreOwner = accountOwner,
@@ -186,6 +209,15 @@ private fun AuthenticatedApp(
 
     when (page) {
         AppPage.FITTING -> FittingDemoScreen(
+            setupRequired = registeredDemoSide == null,
+            onRegisterDemo = { side ->
+                val saved = withContext(Dispatchers.IO) { runCatching { braceStore.registerDemo(auth.userId, side) } }
+                if (saved.isSuccess) {
+                    registeredDemoSide = side
+                    pageName = AppPage.HOME.name
+                }
+                saved.isSuccess
+            },
             onHome = { pageName = AppPage.HOME.name },
             onOpenHistory = { pageName = AppPage.HISTORY.name },
             onBack = { pageName = AppPage.HOME.name }
@@ -194,12 +226,14 @@ private fun AuthenticatedApp(
             HomeScreen(
                 email = auth.email,
                 sessions = sessionState.history,
-                wristSide = sessionState.wristSide,
+                wristSide = registeredDemoSide ?: sessionState.wristSide,
+                braceSide = registeredDemoSide,
                 guideDescription = sessionState.guideTiming.description,
                 onConfigure = { showGuideSettings = true },
                 onOpenFitting = { pageName = AppPage.FITTING.name },
                 sessionRefreshPending = auth.sessionRefreshPending,
                 onStartExercise = {
+                    registeredDemoSide?.let(sessionViewModel::configureWristSide)
                     pageName = AppPage.SESSION.name
                 },
                 onOpenHistory = {
