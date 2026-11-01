@@ -19,6 +19,7 @@ import java.time.LocalDate
     @SerialName("joined_at") val joinedAt: String,
     @SerialName("revoked_at") val revokedAt: String? = null
 )
+@Serializable data class PatientProfileNameDto(val id: String, @SerialName("display_name") val displayName: String? = null)
 @Serializable data class CenterNameDto(val id: String, val name: String)
 @Serializable private data class RevokedCenterDto(
     @SerialName("center_id") val centerId: String,
@@ -27,13 +28,15 @@ import java.time.LocalDate
 data class PatientCenterSnapshot(
     val links: List<CenterLinkDto>,
     val centers: List<CenterNameDto>,
-    val activePlan: ExercisePlanDto?
+    val activePlan: ExercisePlanDto?,
+    val displayName: String? = null
 )
 
 interface PatientCenterGateway {
     suspend fun read(owner: String, today: LocalDate = LocalDate.now()): PatientCenterSnapshot
     suspend fun acceptInvite(owner: String, code: String, consent: Boolean): CenterLinkDto
     suspend fun revoke(owner: String, centerId: String)
+    suspend fun saveDisplayName(owner: String, displayName: String): String? = error("Profile saving unavailable")
 }
 
 class PatientCenterRemoteDataSource(
@@ -49,18 +52,39 @@ class PatientCenterRemoteDataSource(
 
     override suspend fun read(owner: String, today: LocalDate): PatientCenterSnapshot {
         val c = ownedClient(owner)
+        val profile = c.from("profiles").select(Columns.list("id", "display_name")) {
+            filter { eq("id", owner) }
+        }.decodeList<PatientProfileNameDto>().singleOrNull { it.id == owner }
         val links = c.from("center_patients").select {
             filter { eq("patient_id", owner) }
         }.decodeList<CenterLinkDto>().filter { it.patientId == owner }
         val centerIds = links.filter { it.revokedAt == null }.map { it.centerId }.toSet()
-        if (centerIds.isEmpty()) return PatientCenterSnapshot(links, emptyList(), null)
+        if (centerIds.isEmpty()) return PatientCenterSnapshot(links, emptyList(), null, profile?.displayName)
         val centers = c.from("centers").select(Columns.list("id", "name")).decodeList<CenterNameDto>()
             .filter { it.id in centerIds }
         val plans = c.from("exercise_plans").select {
             filter { eq("patient_id", owner); eq("exercise_type", "wrist_extension") }
         }.decodeList<ExercisePlanDto>().filter { it.centerId in centerIds }
         ownedClient(owner)
-        return PatientCenterSnapshot(links, centers, selectActiveWristPlan(plans, owner, today))
+        return PatientCenterSnapshot(links, centers, selectActiveWristPlan(plans, owner, today), profile?.displayName)
+    }
+
+    override suspend fun saveDisplayName(owner: String, displayName: String): String? {
+        val name = displayName.trim().takeIf { it.isNotEmpty() }
+        require(name == null || name.length <= 80) { "Display name is too long" }
+        val c = ownedClient(owner)
+        val existing = c.from("profiles").select(Columns.list("id")) {
+            filter { eq("id", owner) }
+        }.decodeList<PatientProfileNameDto>().any { it.id == owner }
+        ownedClient(owner)
+        if (existing) {
+            // PATCH only this column; existing birth year/side and other fields survive.
+            c.from("profiles").update(buildJsonObject { put("display_name", name) }) {
+                filter { eq("id", owner) }
+            }
+        } else c.from("profiles").insert(PatientProfileNameDto(owner, name))
+        ownedClient(owner)
+        return name
     }
 
     override suspend fun acceptInvite(owner: String, code: String, consent: Boolean): CenterLinkDto {

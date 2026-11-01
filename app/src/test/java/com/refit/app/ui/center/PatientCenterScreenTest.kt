@@ -30,4 +30,19 @@ class PatientCenterScreenTest {
         compose.runOnIdle { assertEquals("opaque-code", accepted) }
         compose.onNodeWithText("동의하고 센터 연결").assertIsNotEnabled()
     }
+    @Test fun optionalNameCanBeEditedWithoutBlockingInvitationConsent() {
+        var saved = ""
+        val snapshot = com.refit.app.data.remote.PatientCenterSnapshot(emptyList(), emptyList(), null, "기존 이름")
+        compose.setContent { ReFitTheme {
+            PatientCenterScreen(PatientCenterUiState(snapshot = snapshot), null, true, {}, { _, _ -> }, {}, {}, {},
+                onSaveName = { saved = it })
+        } }
+        compose.onNodeWithText("표시 이름 (선택)").performScrollTo().performTextReplacement("김민수")
+        compose.onNodeWithText("이름 저장").performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals("김민수", saved) }
+        compose.onNodeWithText("치료사에게 받은 초대코드").performScrollTo().performTextInput("code")
+        compose.onNode(isToggleable()).performScrollTo().performClick()
+        compose.onNodeWithText("동의하고 센터 연결").performScrollTo().assertIsEnabled()
+    }
+
 }

@@ -242,7 +242,8 @@ private fun AuthenticatedApp(
                     if (sessionViewModel.applyClinicianPlan(verified)) pageName = AppPage.HOME.name
                 }
             },
-            onBack = { pageName = AppPage.HOME.name }
+            onBack = { pageName = AppPage.HOME.name },
+            onSaveName = centerViewModel::saveDisplayName
         ) else { pageName = AppPage.HOME.name }
         AppPage.FITTING -> if (registeredDemoSide != null) RegisteredBraceScreen(
             side = requireNotNull(registeredDemoSide),

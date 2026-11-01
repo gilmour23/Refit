@@ -35,6 +35,11 @@ class PatientCenterViewModel(
         failure = "센터 연결 해제를 확인하지 못했어요. 기록 공유가 계속될 수 있으니 연결 상태를 다시 확인해 주세요."
     ) { remote.revoke(owner, centerId); remote.read(owner) }
 
+    fun saveDisplayName(name: String) = perform(
+        failure = "이름을 저장하지 못했어요. 입력한 이름을 확인한 뒤 다시 시도해 주세요.",
+        onSuccess = { _state.update { it.copy(message = "센터에서 확인할 이름을 저장했어요.") } }
+    ) { remote.saveDisplayName(owner, name); remote.read(owner) }
+
     fun verifyPlan(planId: String, onVerified: (ExercisePlanDto) -> Unit) = perform(onSuccess = { snapshot ->
         if (snapshot.activePlan?.id == planId) onVerified(snapshot.activePlan)
         else _state.update { it.copy(message = "오늘의 계획이나 센터 연결이 변경되었어요. 현재 계획을 다시 확인해 주세요.") }

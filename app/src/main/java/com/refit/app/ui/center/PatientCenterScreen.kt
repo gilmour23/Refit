@@ -17,14 +17,27 @@ fun PatientCenterScreen(
     onAccept: (String, Boolean) -> Unit,
     onRevoke: (String) -> Unit,
     onApply: (ExercisePlanDto) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSaveName: (String) -> Unit = {}
 ) {
     var code by remember { mutableStateOf("") }
     var consent by remember { mutableStateOf(false) }
+    var displayName by remember { mutableStateOf("") }
+    LaunchedEffect(state.snapshot?.displayName, state.snapshot != null) {
+        state.snapshot?.let { displayName = it.displayName.orEmpty() }
+    }
     var revokeId by remember { mutableStateOf<String?>(null) }
     Page("재활센터 연결과 계획", onBack = onBack) {
         if (state.loading) CircularProgressIndicator()
         state.message?.let { Hint(it) }
+        Panel {
+            Text("센터에서 확인할 이름", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(displayName, { displayName = it.take(80) }, label = { Text("표시 이름 (선택)") },
+                enabled = !state.loading, singleLine = true)
+            PrimaryAction("이름 저장", { onSaveName(displayName) }, enabled = !state.loading && state.snapshot != null &&
+                displayName.trim() != state.snapshot.displayName.orEmpty())
+            Hint("이름은 선택 사항입니다. 입력하지 않아도 센터 연결에 동의할 수 있어요.")
+        }
         TextButton(onRefresh, enabled = !state.loading) { Text("센터와 계획 새로 확인") }
         state.snapshot?.let { snapshot ->
             val links = snapshot.links.filter { it.revokedAt == null }
