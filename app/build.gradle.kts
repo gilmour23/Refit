@@ -47,20 +47,6 @@ android {
     }
 
     signingConfigs {
-        create("phone") {
-            initWith(getByName("qa"))
-            applicationIdSuffix = ".phone"
-            versionNameSuffix = "-phone"
-            isDebuggable = false
-            isJniDebuggable = false
-            // Sign the aligned unsigned artifact locally. The signing key never enters CI or git.
-            signingConfig = null
-            buildConfigField("String", "SUPABASE_URL", "\"\"")
-            buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"\"")
-            buildConfigField("boolean", "VISION_REQUIRE_TOKEN", "true")
-            manifestPlaceholders["appLabel"] = "Re:Fit"
-            matchingFallbacks += listOf("release")
-        }
         create("preview") {
             localProperties.getProperty("REFIT_PREVIEW_STORE_FILE")?.let { storeFile = file(it) }
             storePassword = localProperties.getProperty("REFIT_PREVIEW_STORE_PASSWORD")
