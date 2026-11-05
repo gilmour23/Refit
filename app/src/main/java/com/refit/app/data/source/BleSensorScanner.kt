@@ -43,14 +43,24 @@ class BleSensorScanner(context: Context) {
             val scanner = adapter.bluetoothLeScanner ?: error("Scanner unavailable")
             val callback = object : ScanCallback() {
                 override fun onScanResult(type: Int, result: ScanResult) {
-                    if (activeCallback !== this || !_scanning.value) return
-                    val name = result.scanRecord?.deviceName ?: runCatching { result.device.name }.getOrNull()
-                    catalog.record(name, result.device.address, result.rssi)
-                    _devices.value = catalog.snapshot()
+                    val observer = this
+                    handler.post {
+                        if (activeCallback !== observer || !_scanning.value) return@post
+                        try {
+                            val name = result.scanRecord?.deviceName ?: runCatching { result.device.name }.getOrNull()
+                            catalog.record(name, result.device.address, result.rssi)
+                            _devices.value = catalog.snapshot()
+                        } catch (_: SecurityException) {
+                            stop(); _error.value = "블루투스 권한이 해제됐어요. 다시 허용해 주세요."
+                        }
+                    }
                 }
                 override fun onScanFailed(code: Int) {
-                    if (activeCallback !== this) return
-                    stop(); _error.value = "기기를 검색하지 못했어요 ($code). 잠시 뒤 다시 검색해 주세요."
+                    val observer = this
+                    handler.post {
+                        if (activeCallback !== observer) return@post
+                        stop(); _error.value = "기기를 검색하지 못했어요 ($code). 잠시 뒤 다시 검색해 주세요."
+                    }
                 }
             }
             activeCallback = callback; _scanning.value = true
@@ -67,3 +77,4 @@ class BleSensorScanner(context: Context) {
         if (previous != null) runCatching { manager?.adapter?.bluetoothLeScanner?.stopScan(previous) }
     }
 }
+

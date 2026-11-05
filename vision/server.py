@@ -1,7 +1,7 @@
 r"""전완 치수 측정 API 서버 (v2) — 앱이 위·옆 사진 2장을 보내면 전완 치수 JSON을 돌려준다.
 
 실행:
-    .\.venv\Scripts\python.exe -m uvicorn server:app --host 0.0.0.0 --port 8000
+    .\.venv\Scripts\python.exe -m uvicorn server:app --host 127.0.0.1 --port 8000
 
 확인:
     브라우저에서 http://localhost:8000/docs  → 사진 2장 올려서 바로 테스트 가능
@@ -10,6 +10,7 @@ v1(손가락 측정)은 server_v1_backup.py 에 보관.
 """
 import base64
 import json
+import os
 import re
 import uuid
 from datetime import datetime
@@ -20,12 +21,14 @@ import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from security import VisionSecurityMiddleware, read_photo
 from brace_report import dims_csv
 from measure import imwrite
 from measure_arm import exif_focal35, measure_arm, parse_quad
 from measure_brace import FIXED_MM, measure_brace
 
-app = FastAPI(title="Re:Fit 치수 측정 API (손목 보조기 /measure_brace + 전완 /measure)", version="2.1")
+app = FastAPI(title="Re:Fit 치수 측정 API (손목 보조기 /measure_brace + 전완 /measure)", version="2.2")
+app.add_middleware(VisionSecurityMiddleware)
 
 LOG_DIR = Path(__file__).parent / "out" / "server"  # 받은 사진·결과를 남겨서 나중에 줄자 실측과 비교
 
@@ -34,9 +37,9 @@ def validated_session(value: str, prefix: str) -> str:
     session = value.strip() or prefix + uuid.uuid4().hex
     if not re.fullmatch(r"[\w-]{1,80}", session):
         raise HTTPException(400, "측정 ID에는 문자·숫자·밑줄·하이픈만 사용할 수 있어요")
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
     try:
-        (LOG_DIR / session).mkdir(exist_ok=False)
+        (LOG_DIR / session).mkdir(exist_ok=False, mode=0o700)
     except FileExistsError:
         raise HTTPException(409, "이미 사용한 측정 ID예요. 새 ID로 다시 측정해 주세요")
     return session
@@ -52,7 +55,7 @@ def parse_xy(s):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": "2.1"}
+    return {"ok": True, "version": "2.2"}
 
 
 @app.post("/measure")
@@ -75,7 +78,7 @@ async def measure_endpoint(
     # 1) 사진 읽기 — EXIF(초점거리)는 원본 바이트에서 읽어야 하므로 바이트를 그대로 보관
     imgs, focal = {}, []
     for name, up in [("top", top_image), ("side", side_image)]:
-        data = await up.read()
+        data = await read_photo(up)
         img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
         if img is None:
             label = "위" if name == "top" else "옆"
@@ -102,8 +105,9 @@ async def measure_endpoint(
     # 4) 기록 남기기 (원본 사진 + 결과 + 확인용 그림)
     d = LOG_DIR / session
     d.mkdir(parents=True, exist_ok=True)
-    for name, (_, data) in imgs.items():
-        (d / f"{name}.jpg").write_bytes(data)
+    if os.environ.get("REFIT_VISION_KEEP_ORIGINALS") == "1":
+        for name, (_, data) in imgs.items():
+            (d / f"{name}.jpg").write_bytes(data)
     (d / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     if top_ov is not None:
         imwrite(d / "top_overlay.jpg", top_ov)
@@ -135,7 +139,7 @@ async def measure_brace_endpoint(
     session = validated_session(session_id, "B")
     imgs, focal = {}, []
     for name, up in [("top", top_image), ("side", side_image)]:
-        data = await up.read()
+        data = await read_photo(up)
         img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
         if img is None:
             label = "위" if name == "top" else "옆"
@@ -158,8 +162,9 @@ async def measure_brace_endpoint(
 
     d = LOG_DIR / session
     d.mkdir(parents=True, exist_ok=True)
-    for name, (_, data) in imgs.items():
-        (d / f"{name}.jpg").write_bytes(data)
+    if os.environ.get("REFIT_VISION_KEEP_ORIGINALS") == "1":
+        for name, (_, data) in imgs.items():
+            (d / f"{name}.jpg").write_bytes(data)
     if top_ov is not None:
         imwrite(d / "brace_top.jpg", top_ov)
         imwrite(d / "brace_side.jpg", side_ov)
@@ -224,3 +229,4 @@ def brace_dims(session_id: str):
     """①~⑪ 치수표(CSV, 엑셀에서 열림). 설계팀 전달용."""
     return FileResponse(_session_file(session_id, "dims.csv"), media_type="text/csv; charset=utf-8",
                         filename=f"{session_id}_dims.csv")
+

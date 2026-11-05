@@ -28,10 +28,11 @@ android {
         applicationId = "com.refit.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.6.3"
+        versionCode = 15
+        versionName = "0.6.4"
         manifestPlaceholders["appLabel"] = "Re:Fit"
 
+        buildConfigField("boolean", "VISION_REQUIRE_TOKEN", "false")
         buildConfigField("String", "VISION_SERVER_URL", "\"${localProperty("VISION_SERVER_URL")}\"")
         buildConfigField(
             "String",
@@ -46,6 +47,20 @@ android {
     }
 
     signingConfigs {
+        create("phone") {
+            initWith(getByName("qa"))
+            applicationIdSuffix = ".phone"
+            versionNameSuffix = "-phone"
+            isDebuggable = false
+            isJniDebuggable = false
+            // Sign the aligned unsigned artifact locally. The signing key never enters CI or git.
+            signingConfig = null
+            buildConfigField("String", "SUPABASE_URL", "\"\"")
+            buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"\"")
+            buildConfigField("boolean", "VISION_REQUIRE_TOKEN", "true")
+            manifestPlaceholders["appLabel"] = "Re:Fit"
+            matchingFallbacks += listOf("release")
+        }
         create("preview") {
             localProperties.getProperty("REFIT_PREVIEW_STORE_FILE")?.let { storeFile = file(it) }
             storePassword = localProperties.getProperty("REFIT_PREVIEW_STORE_PASSWORD")
@@ -62,6 +77,20 @@ android {
             // Local QA build only; this debug key may differ from an installed app.
             // Use the separate preview package when the original signing key is unavailable.
             signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
+        create("phone") {
+            initWith(getByName("qa"))
+            applicationIdSuffix = ".phone"
+            versionNameSuffix = "-phone"
+            isDebuggable = false
+            isJniDebuggable = false
+            // Sign the aligned unsigned artifact locally. The signing key never enters CI or git.
+            signingConfig = null
+            buildConfigField("String", "SUPABASE_URL", "\"\"")
+            buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"\"")
+            buildConfigField("boolean", "VISION_REQUIRE_TOKEN", "true")
+            manifestPlaceholders["appLabel"] = "Re:Fit"
             matchingFallbacks += listOf("release")
         }
         create("preview") {
@@ -137,5 +166,6 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
 
 

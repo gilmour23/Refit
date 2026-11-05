@@ -53,6 +53,17 @@ class BraceMeasurementTest {
         } finally { server.close() }
     }
 
+    @Test fun authenticatedMeasurementSendsKeyOnlyAsAuthorizationHeader() = runBlocking {
+        val server = TestHttpServer(200, response())
+        val token = "C".repeat(48)
+        try {
+            val photo = MeasurementPhoto("top.jpg", "image/jpeg") { ByteArrayInputStream(byteArrayOf(1)) }
+            BraceMeasurementClient(allowHttp = true, requireToken = true).measure("http://127.0.0.1:${server.port}", photo, photo, token)
+            assertTrue(server.requestHeaders.any { it.equals("Authorization: Bearer $token", true) })
+            assertFalse(server.received.toString(Charsets.UTF_8).contains(token))
+        } finally { server.close() }
+    }
+
     @Test fun failedServerDoesNotReturnAnExampleMeasurement() = runBlocking {
         val server = TestHttpServer(503, "")
         try {
@@ -70,6 +81,7 @@ internal class TestHttpServer(private val status: Int, private val response: Str
     private val socket = ServerSocket(0)
     val port: Int get() = socket.localPort
     @Volatile var received = byteArrayOf()
+    @Volatile var requestHeaders = emptyList<String>()
     private val worker = Thread {
         socket.accept().use { client ->
             client.soTimeout = 10_000
@@ -85,6 +97,7 @@ internal class TestHttpServer(private val status: Int, private val response: Str
             }
             val headers = mutableListOf<String>()
             while (true) { val header = line(); if (header.isEmpty()) break; headers += header }
+            requestHeaders = headers.toList()
             val body = ByteArrayOutputStream()
             if (headers.any { it.equals("Transfer-Encoding: chunked", true) }) {
                 while (true) {
@@ -106,3 +119,4 @@ internal class TestHttpServer(private val status: Int, private val response: Str
     }.apply { isDaemon = true; start() }
     override fun close() { socket.close(); worker.join(1000) }
 }
+
