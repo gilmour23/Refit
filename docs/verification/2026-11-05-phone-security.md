@@ -14,7 +14,7 @@ Scope: existing vision/sensor Android app at 46886c9, native installable APK pro
 
 - Existing owner-scoped AES-GCM encryption for saved measurement/rehab records and reusable login credentials. Private reports/photos are not retained in Android registration preferences.
 - Backup/device-transfer exclusion; no broad storage/camera permission; location permission only for BLE on Android 11 or earlier. Real BLE observations only; no mock connection success imported. Discovery callbacks run on the main handler, reject late scan events and recover if Bluetooth permission is revoked while reading device identity.
-- Only the launcher MainActivity is intentionally exported; no WebView, custom permissive TrustManager or TLS hostname bypass found in application code.
+- The phone manifest removes the library-provided ProfileInstallReceiver used by adb benchmark/profile tools. The final APK verifier requires MainActivity to be the only exported component. No WebView, custom permissive TrustManager or TLS hostname bypass found in application code.
 - Source RLS policies enforce authenticated ownership, including both USING and WITH CHECK for updates. The phone build uses no cloud project; no production cloud settings or patients were queried or changed.
 - Package-level verifier inspects the generated binary manifest and DEX, requiring non-debuggable, no cleartext/backup, only expected export/permissions and no CI test URL/key. Signing and final APK SHA-256 are checked separately after local signing.
 
