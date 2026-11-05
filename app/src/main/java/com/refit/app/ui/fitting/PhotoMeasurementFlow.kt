@@ -34,7 +34,15 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("refit_vision_connection", 0) }
     var server by rememberSaveable { mutableStateOf(prefs.getString("server", BuildConfig.VISION_SERVER_URL) ?: "") }
-    var editServer by rememberSaveable { mutableStateOf(server.isBlank()) }
+    val credentialStore = remember { VisionConnectionStore(context) }
+    var token by remember { mutableStateOf("") }
+    var credentialReady by remember { mutableStateOf(false) }
+    LaunchedEffect(server) {
+        credentialReady = false; token = ""
+        token = withContext(Dispatchers.IO) { runCatching { credentialStore.read(server) }.getOrNull() } ?: ""
+        credentialReady = true
+    }
+    var editServer by rememberSaveable { mutableStateOf(server.isBlank() || BuildConfig.VISION_REQUIRE_TOKEN) }
     var request by remember { mutableIntStateOf(if (server.isBlank()) 0 else 1) }
     var result by remember { mutableStateOf<BraceMeasurement?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -57,6 +65,7 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
     }
     LaunchedEffect(topUri, sideUri, request) {
         if (request == 0) return@LaunchedEffect
+        if (BuildConfig.VISION_REQUIRE_TOKEN && (!credentialReady || token.isBlank())) return@LaunchedEffect
         result = null; accepted = false; message = null; loading = true
         try {
             fun photo(uri: String, name: String): MeasurementPhoto {
@@ -64,9 +73,10 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
                 val mime = context.contentResolver.getType(u) ?: "image/jpeg"
                 return MeasurementPhoto(name, mime) { requireNotNull(context.contentResolver.openInputStream(u)) }
             }
-            result = BraceMeasurementClient(allowHttp = BuildConfig.DEBUG).measure(server,
-                photo(topUri, "top.jpg"), photo(sideUri, "side.jpg"))
+            result = BraceMeasurementClient(allowHttp = BuildConfig.DEBUG, requireToken = BuildConfig.VISION_REQUIRE_TOKEN).measure(server,
+                photo(topUri, "top.jpg"), photo(sideUri, "side.jpg"), accessToken = token)
             ensureActive()
+            if (token.isNotEmpty()) withContext(Dispatchers.IO) { credentialStore.save(server, token) }
             prefs.edit().putString("server", server.trim()).apply()
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) { message = e.message ?: "측정하지 못했어요. 서버와 사진을 확인해 주세요." }
@@ -88,7 +98,7 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
         }, !saving && report != null && onRegister != null && (measured.warnings.isEmpty() || accepted))
         else PrimaryAction(if (loading) "카드와 손을 분석하는 중…" else "사진 분석하기", {
             editServer = false; request++
-        }, !loading && server.isNotBlank())
+        }, !loading && server.isNotBlank() && credentialReady && (!BuildConfig.VISION_REQUIRE_TOKEN || token.isNotBlank()))
     }) {
         Text("${if (side == "left") "왼쪽" else "오른쪽"} 손목 · 사진 2장", style = MaterialTheme.typography.titleMedium)
         Hint("카드와 손을 자동으로 찾아 11개 치수를 계산합니다. 모서리를 직접 선택할 필요가 없어요.")
@@ -96,9 +106,15 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
             OutlinedTextField(server, { server = it; result = null; accepted = false },
                 label = { Text("측정 서버 주소") }, placeholder = { Text("https://측정서버주소") },
                 singleLine = true, enabled = !loading && !saving, modifier = Modifier.fillMaxWidth())
-            Hint("Python 측정 서버를 실행한 주소를 한 번 입력해 주세요. 앱과 같은 PC의 에뮬레이터는 디버그 빌드에서 http://10.0.2.2:8000을 사용할 수 있어요.")
+            OutlinedTextField(token, { token = it; result = null; accepted = false },
+                label = { Text("서버 연결키") }, singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
+                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                enabled = !loading && !saving && credentialReady, modifier = Modifier.fillMaxWidth())
+            Hint(if (BuildConfig.DEBUG) "서버가 발급한 연결키를 입력하세요. 개발용 로컬 HTTP는 디버그 빌드에서만 사용할 수 있어요."
+                else "HTTPS 측정 서버 주소와 발급받은 연결키를 입력하세요. 연결키는 이 기기에서 암호화해 보관합니다.")
         } else TextButton({ editServer = true; result = null; accepted = false }, enabled = !loading && !saving) { Text("측정 서버 설정") }
-        Hint("선택한 원본 사진 2장은 측정 서버로 전송됩니다. 서버는 사진과 결과를 보관합니다.")
+        Hint("선택한 원본 사진 2장을 측정 서버로 전송합니다. 이 버전의 서버는 원본 파일 보관을 기본으로 끄고, 측정 보고서 접근에는 별도 권한을 요구합니다.")
         if (loading) { LinearProgressIndicator(Modifier.fillMaxWidth()); Hint("사진 크기와 서버 상태에 따라 최대 1분 정도 걸릴 수 있어요.") }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (measured != null) {
@@ -137,3 +153,4 @@ internal fun PhotoMeasurementFlow(topUri: String, sideUri: String, side: String,
         }
     }
 }
+

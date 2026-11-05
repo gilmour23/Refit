@@ -56,6 +56,23 @@ jobs:
           printf 'SUPABASE_URL=https://test.supabase.co\nSUPABASE_PUBLISHABLE_KEY=public-test-key\n' > local.properties
           ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug -Pkotlin.incremental=false --continue --stacktrace
 
+      - name: Verify and build installable phone APK
+        run: |
+          printf 'SUPABASE_URL=\nSUPABASE_PUBLISHABLE_KEY=\nVISION_SERVER_URL=\n' > local.properties
+          ./gradlew :app:testPhoneUnitTest --tests '*PhoneSecurityTest' :app:lintPhone :app:assemblePhone -Pkotlin.incremental=false --continue --stacktrace
+          python3 scripts/verify_phone_apk.py app/build/outputs/apk/phone/app-phone-unsigned.apk
+          mkdir -p build/phone-delivery
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -P 16 -f 4 app/build/outputs/apk/phone/app-phone-unsigned.apk build/phone-delivery/refit-phone-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -P 16 -c 4 build/phone-delivery/refit-phone-unsigned.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/phone-delivery/apksigner.jar
+          cp build/phone-security.json build/phone-delivery/phone-security.json
+
+      - name: Upload installable phone build inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: refit-phone-unsigned-verified
+          path: build/phone-delivery/
+
       - name: Upload unit test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -65,6 +82,8 @@ jobs:
             app/build/reports/tests/testDebugUnitTest
             app/build/reports/tests/offline-demo
             app/build/reports/lint-results-debug.*
+            app/build/reports/lint-results-phone.*
+            app/build/reports/tests/testPhoneUnitTest
             app/build/outputs/patient-screens/*.png
 
       - name: Upload debug APK
@@ -103,4 +122,5 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
           psql -v ON_ERROR_STOP=1 -f supabase/schema.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/ownership.sql
+
 

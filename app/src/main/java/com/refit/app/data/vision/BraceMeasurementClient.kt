@@ -11,8 +11,10 @@ import java.util.UUID
 
 class MeasurementPhoto(val filename: String, val mimeType: String, val open: () -> InputStream)
 
-class BraceMeasurementClient(private val allowHttp: Boolean = false) {
-    suspend fun measure(serverUrl: String, top: MeasurementPhoto, side: MeasurementPhoto): BraceMeasurement = withContext(Dispatchers.IO) {
+class BraceMeasurementClient(private val allowHttp: Boolean = false, private val requireToken: Boolean = false) {
+    suspend fun measure(serverUrl: String, top: MeasurementPhoto, side: MeasurementPhoto, accessToken: String = ""): BraceMeasurement = withContext(Dispatchers.IO) {
+        if (requireToken && accessToken.isBlank()) throw IOException("측정 서버 연결키를 입력해 주세요.")
+        require(accessToken.isEmpty() || accessToken.matches(Regex("[A-Za-z0-9_-]{32,256}"))) { "측정 서버 연결키 형식을 확인해 주세요." }
         val base = URI(serverUrl.trim().trimEnd('/'))
         require(base.host != null && base.rawUserInfo == null && base.query == null && base.fragment == null &&
             (base.scheme == "https" || allowHttp && base.scheme == "http")) {
@@ -30,6 +32,7 @@ class BraceMeasurementClient(private val allowHttp: Boolean = false) {
             connection.setChunkedStreamingMode(64 * 1024)
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
             connection.setRequestProperty("Accept", "application/json")
+            if (accessToken.isNotEmpty()) connection.setRequestProperty("Authorization", "Bearer $accessToken")
             connection.outputStream.buffered().use { out ->
                 fun line(value: String) { out.write((value + "\r\n").toByteArray(Charsets.UTF_8)) }
                 fun field(name: String, value: String) {
@@ -62,6 +65,7 @@ class BraceMeasurementClient(private val allowHttp: Boolean = false) {
                 line("--$boundary--")
             }
             val status = connection.responseCode
+            if (status == 401 || status == 403) throw IOException("측정 서버 연결키를 확인해 주세요.")
             if (status !in 200..299) throw IOException("측정 서버에 연결하지 못했어요 (HTTP $status). 서버 주소와 실행 상태를 확인해 주세요.")
             val bytes = connection.inputStream.use { input ->
                 val output = java.io.ByteArrayOutputStream()
@@ -83,3 +87,4 @@ class BraceMeasurementClient(private val allowHttp: Boolean = false) {
 
     companion object { private const val MAX_RESPONSE = 12 * 1024 * 1024 }
 }
+
