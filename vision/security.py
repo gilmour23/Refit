@@ -4,9 +4,15 @@ import os
 import re
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener(thumbnails=False)
+except ImportError:
+    pass
 
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
 MAX_IMAGE_PIXELS = 24_000_000
+PUBLIC_WEB_PATHS = frozenset({'/', '/app.js', '/core.mjs', '/bluetooth.mjs', '/style.css', '/favicon.svg'})
 
 
 class VisionSecurityMiddleware:
@@ -19,7 +25,8 @@ class VisionSecurityMiddleware:
             return await self.app(scope, receive, send)
         path, method = scope.get("path", ""), scope.get("method", "")
         headers = scope.get("headers", [])
-        if not (path == "/health" and method == "GET"):
+        public = (path == '/health' and method == 'GET') or (path in PUBLIC_WEB_PATHS and method in ('GET', 'HEAD'))
+        if not public:
             # A measurement/upload key cannot list or download other people's reports.
             admin = method in ("GET", "HEAD")
             expected = os.environ.get("REFIT_VISION_ADMIN_TOKEN" if admin else "REFIT_VISION_TOKEN", "")
@@ -68,8 +75,10 @@ async def read_photo(upload):
         raise HTTPException(413, "사진이 비어 있거나 너무 큽니다.")
     try:
         with Image.open(BytesIO(data)) as photo:
-            if photo.format not in ("JPEG", "PNG"):
-                raise HTTPException(415, "JPG 또는 PNG 원본을 선택해 주세요.")
+            # Galaxy Motion Photos can be identified as MPO although the primary image is JPEG.
+            jpeg_container = photo.format == 'MPO' and data.startswith(b'\xff\xd8\xff')
+            if photo.format not in ("JPEG", "PNG", "HEIF") and not jpeg_container:
+                raise HTTPException(415, "JPG, PNG 또는 HEIC 원본을 선택해 주세요.")
             if photo.width <= 0 or photo.height <= 0 or photo.width * photo.height > MAX_IMAGE_PIXELS:
                 raise HTTPException(413, "사진 해상도가 너무 큽니다 (최대 2400만 화소).")
     except HTTPException:
@@ -77,3 +86,16 @@ async def read_photo(upload):
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise HTTPException(415, "사진 파일을 읽을 수 없습니다.")
     return data
+
+def decode_photo(data):
+    import cv2
+    import numpy as np
+    from io import BytesIO
+    from PIL import Image
+    if data.startswith(b'\xff\xd8\xff') or data.startswith(b'\x89PNG'):
+        return cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    with Image.open(BytesIO(data)) as image:
+        if image.format != 'HEIF' or image.width * image.height > MAX_IMAGE_PIXELS:
+            raise HTTPException(415, '사진 파일을 읽을 수 없습니다.')
+        return cv2.cvtColor(np.asarray(image.convert('RGB')), cv2.COLOR_RGB2BGR)
+

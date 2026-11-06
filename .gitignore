@@ -19,3 +19,16 @@ Thumbs.db
 # Local implementation ledger
 .superpowers/
 device-evidence/
+
+# ReFit laptop web demonstration
+.venv-demo/
+.demo-tools/
+.demo-private/
+logs/
+DEMO_CONNECTION.txt
+DEMO_JOIN.html
+__pycache__/
+vision/out/
+vision/models/
+vision/fonts/
+*.zip
