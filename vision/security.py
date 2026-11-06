@@ -12,7 +12,7 @@ except ImportError:
 
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
 MAX_IMAGE_PIXELS = 24_000_000
-PUBLIC_WEB_PATHS = frozenset({'/', '/app.js', '/core.mjs', '/bluetooth.mjs', '/style.css', '/favicon.svg'})
+PUBLIC_WEB_PATHS = frozenset({'/', '/app.js', '/core.mjs', '/bluetooth.mjs', '/style.css', '/favicon.svg', '/operator', '/demo', '/intake.js', '/operator.js', '/intake.css'})
 
 
 class VisionSecurityMiddleware:
@@ -28,7 +28,7 @@ class VisionSecurityMiddleware:
         public = (path == '/health' and method == 'GET') or (path in PUBLIC_WEB_PATHS and method in ('GET', 'HEAD'))
         if not public:
             # A measurement/upload key cannot list or download other people's reports.
-            admin = method in ("GET", "HEAD")
+            admin = path.startswith("/admin/") or method in ("GET", "HEAD")
             expected = os.environ.get("REFIT_VISION_ADMIN_TOKEN" if admin else "REFIT_VISION_TOKEN", "")
             if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", expected):
                 return await JSONResponse({"detail": "측정 서버 연결키 설정이 필요합니다."}, status_code=503)(scope, receive, send)

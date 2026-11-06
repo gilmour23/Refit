@@ -66,9 +66,13 @@ def join_page(url,upload):
  import qrcode
  from io import BytesIO
  link=url+'/#key='+upload;data=BytesIO();qrcode.make(link).save(data,format='PNG')
- content=f'''<!doctype html><meta charset="utf-8"><title>ReFit 시연 접속</title><style>body{{font:18px system-ui;max-width:760px;margin:40px auto;line-height:1.8;padding:20px}}code{{overflow-wrap:anywhere}}img{{width:280px}}</style><h1>Re:Fit 시연 접속</h1><p>갤럭시: Chrome / 아이폰·아이패드: Bluefy</p><p><a href="{html.escape(link)}">시연 화면 열기</a></p><img alt="연결키가 포함된 팀원용 접속 QR" src="data:image/png;base64,{base64.b64encode(data.getvalue()).decode()}"><h2>갤럭시 APK 설정</h2><p>측정 서버 주소: <code>{html.escape(url)}</code></p><p>연결키: <code>{html.escape(upload)}</code></p><p>이 페이지와 QR은 팀원에게만 전달하세요. 관리자 키는 포함하지 않습니다.</p><p>노트북을 전원·인터넷에 연결하고 실행 창을 유지하세요. 터널 재시작 시 주소가 바뀝니다.</p>'''
+ content=f'''<!doctype html><meta charset="utf-8"><title>ReFit 시연 접속</title><style>body{{font:18px system-ui;max-width:760px;margin:40px auto;line-height:1.8;padding:20px}}code{{overflow-wrap:anywhere}}img{{width:280px}}</style><h1>Re:Fit 시연 접속</h1><p>참가자 사진 제출: 갤럭시 Chrome / 아이폰·아이패드 Safari 또는 Bluefy</p><p><a href="{html.escape(link)}">촬영 안내와 사진 접수 열기</a></p><img alt="연결키가 포함된 팀원용 접속 QR" src="data:image/png;base64,{base64.b64encode(data.getvalue()).decode()}"><p>QR을 스캔하면 촬영 안내 → 이름·측정할 손 → 사진 두 장 제출로 이어집니다.</p><p>센서 시연은 <a href="{html.escape(url)}/demo#key={html.escape(upload)}">별도 센서 시연 화면</a>에서 진행하세요. 갤럭시 Chrome / iPhone·iPad Bluefy가 필요합니다.</p><h2>갤럭시 APK 설정</h2><p>측정 서버 주소: <code>{html.escape(url)}</code></p><p>연결키: <code>{html.escape(upload)}</code></p><p>이 페이지와 QR은 팀원에게만 전달하세요. 관리자 키는 포함하지 않습니다.</p><p>노트북을 전원·인터넷에 연결하고 실행 창을 유지하세요. 터널 재시작 시 주소가 바뀝니다.</p>'''
  path=ROOT/'DEMO_JOIN.html';path.write_text(content,encoding='utf8');path.chmod(0o600)
  text=ROOT/'DEMO_CONNECTION.txt';text.write_text(f'HTTPS 주소: {url}\n연결키: {upload}\n갤럭시 Chrome / iPhone·iPad Bluefy\n실행 창을 닫으면 접속이 종료됩니다.\n',encoding='utf8');text.chmod(0o600)
+ return path
+def operator_page(url, admin):
+ content=f'''<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>ReFit 운영자 시작</title><style>body{{font:18px system-ui;max-width:760px;margin:40px auto;padding:20px;line-height:1.8}}code{{overflow-wrap:anywhere}}</style><h1>Re:Fit 운영자 화면</h1><p><a href="{html.escape(url)}/operator" target="_blank" rel="noopener noreferrer">사용자 목록과 측정 결과 열기</a></p><p>아래 관리자 키를 복사해 운영자 화면에 입력하세요.</p><p><code>{html.escape(admin)}</code></p><p>이 파일과 관리자 키는 운영자만 보관하세요. 참가자에게는 DEMO_JOIN.html의 QR을 보여 주세요.</p><p>접수된 원본 사진과 이름·치수는 vision/out/server/participants에 저장됩니다. 운영자 화면에서 삭제할 수 있습니다.</p>'''
+ path=ROOT/'DEMO_OPERATOR.html';path.write_text(content,encoding='utf8');path.chmod(0o600)
  return path
 def run(local=False):
  if not python_path().exists():raise RuntimeError('INSTALL_FIRST.cmd를 먼저 실행하세요.')
@@ -81,7 +85,7 @@ def run(local=False):
   if sock.connect_ex(('127.0.0.1',port))==0:raise RuntimeError('이미 시연 서버가 실행 중입니다. 기존 실행 창을 확인하세요.')
  doctor();keys=credentials();env=child_environment(keys)
  logs=ROOT/'logs';logs.mkdir(exist_ok=True);server=tunnel=None
- for name in ('DEMO_CONNECTION.txt','DEMO_JOIN.html'):(ROOT/name).unlink(missing_ok=True)
+ for name in ('DEMO_CONNECTION.txt','DEMO_JOIN.html','DEMO_OPERATOR.html'):(ROOT/name).unlink(missing_ok=True)
  try:
   with (logs/'server.log').open('ab') as slog,(logs/'tunnel.log').open('w',encoding='utf8') as tlog:
    server=subprocess.Popen([str(python_path()),'-m','uvicorn','server:app','--host','127.0.0.1','--port',str(port),'--workers','1','--no-access-log','--no-proxy-headers'],cwd=ROOT/'vision',env=env,stdout=slog,stderr=subprocess.STDOUT)
@@ -101,8 +105,8 @@ def run(local=False):
      if match:url=match.group();break
      time.sleep(.5)
     else:raise RuntimeError('HTTPS 주소 발급 시간 초과')
-   page=join_page(url,keys['upload']);webbrowser.open(page.as_uri())
-   print(f'시연 주소: {url}\n연결키와 QR: DEMO_JOIN.html / DEMO_CONNECTION.txt\n외부 접속은 휴대폰 LTE/5G에서 직접 확인하세요.\n이 창을 닫으면 시연이 종료됩니다.',flush=True)
+   page=join_page(url,keys['upload']);operator=operator_page(url,keys['admin']);webbrowser.open(page.as_uri());webbrowser.open(operator.as_uri())
+   print(f'시연 주소: {url}\n참가자 QR: DEMO_JOIN.html / 운영자 키와 화면: DEMO_OPERATOR.html\n외부 접속은 휴대폰 LTE/5G에서 직접 확인하세요.\n이 창을 닫으면 시연이 종료됩니다.',flush=True)
    if os.name=='nt':
     import ctypes
     ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)
@@ -110,7 +114,7 @@ def run(local=False):
    raise RuntimeError('서버 또는 터널이 종료됐습니다. 로그를 확인하고 다시 실행하세요.')
  finally:
   stop(tunnel);stop(server)
-  for name in ('DEMO_CONNECTION.txt','DEMO_JOIN.html'):(ROOT/name).unlink(missing_ok=True)
+  for name in ('DEMO_CONNECTION.txt','DEMO_JOIN.html','DEMO_OPERATOR.html'):(ROOT/name).unlink(missing_ok=True)
   if os.name=='nt':
    import ctypes
    ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)

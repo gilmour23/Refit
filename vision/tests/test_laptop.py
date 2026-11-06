@@ -16,3 +16,10 @@ class LaptopSetup(unittest.TestCase):
    env=laptop.child_environment({'upload':'A'*48,'admin':'B'*48})
   self.assertNotIn('TUNNEL_TOKEN',env);self.assertNotIn('REFIT_VISION_OTHER',env)
   self.assertEqual(env['REFIT_VISION_KEEP_ORIGINALS'],'0')
+ def test_participant_qr_never_contains_admin_key_and_operator_page_is_separate(self):
+  with tempfile.TemporaryDirectory() as d,patch.object(laptop,'ROOT',Path(d)):
+   participant=laptop.join_page('https://example.trycloudflare.com','U'*48).read_text('utf8')
+   self.assertNotIn('M'*48,participant)
+   operator=laptop.operator_page('https://example.trycloudflare.com','M'*48).read_text('utf8')
+   self.assertIn('/operator',operator);self.assertIn('M'*48,operator)
+   self.assertNotIn('#key=',operator)

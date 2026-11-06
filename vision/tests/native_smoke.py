@@ -22,4 +22,15 @@ with tempfile.TemporaryDirectory() as d:
   assert body['ok'] is False,body
   assert '오류가 났어요' not in body.get('message',''),body
   assert not body.get('dims_mm') and not body.get('report_jpg_base64'),body
+  response=c.post('/intake',headers={'Authorization':'Bearer '+os.environ['REFIT_VISION_TOKEN']},files={'top_image':('top.jpg',data,'image/jpeg'),'side_image':('side.jpg',data,'image/jpeg')},data={'display_name':'CI invalid photo test','hand':'left','consent':'true'})
+  assert response.status_code==202,response.text
+  import time
+  id=response.json()['id']
+  for _ in range(200):
+   record=c.get('/admin/intakes/'+id,headers={'Authorization':'Bearer '+os.environ['REFIT_VISION_ADMIN_TOKEN']}).json()
+   if record['status'] not in ('queued','processing'):break
+   time.sleep(.05)
+  assert record['status']=='failed',record
+  assert '오류' not in record['message'],record
+  assert not record['result'].get('dims_mm'),record
  print('Native inference initialized; invalid photos honestly rejected; web/API auth OK')

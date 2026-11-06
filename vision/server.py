@@ -23,6 +23,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 import asyncio
+import math
+from contextlib import asynccontextmanager
+from intake import IntakeService, router as intake_router
 
 from security import VisionSecurityMiddleware, read_photo, decode_photo
 from brace_report import dims_csv
@@ -30,7 +33,17 @@ from measure import imwrite
 from measure_arm import exif_focal35, measure_arm, parse_quad
 from measure_brace import FIXED_MM, measure_brace
 
-app = FastAPI(title="Re:Fit 치수 측정 API (손목 보조기 /measure_brace + 전완 /measure)", version="2.2")
+@asynccontextmanager
+async def lifespan(app):
+    global measurement_lock
+    measurement_lock = asyncio.Lock()
+    app.state.intake = IntakeService(LOG_DIR / 'participants', lambda directory, session: process_intake(directory, session))
+    try:
+        yield
+    finally:
+        await app.state.intake.close()
+
+app = FastAPI(lifespan=lifespan, title="Re:Fit 치수 측정 API (손목 보조기 /measure_brace + 전완 /measure)", version="2.2")
 app.add_middleware(VisionSecurityMiddleware)
 measurement_lock = asyncio.Lock()
 
@@ -245,6 +258,44 @@ def brace_dims(session_id: str):
 def demo_check():
     from measure import MODEL
     return {'ok': True, 'model_ready': MODEL.is_file(), 'photo_formats': ['JPEG', 'PNG', 'HEIF'], 'sensor_format': 'signed_INT16_LE'}
+
+
+async def process_intake(directory, session):
+    """Use the existing real measurement pipeline, preserving uploaded EXIF bytes."""
+    def calculate():
+        data = [(directory / (name + '.original')).read_bytes() for name in ('top', 'side')]
+        images = [decode_photo(value) for value in data]
+        if any(image is None for image in images):
+            return {'ok': False, 'session_id': session, 'message': '사진을 읽지 못했어요. 원본 사진을 다시 제출해 주세요.'}
+        for name, image in zip(('top', 'side'), images):
+            imwrite(directory / (name + '.jpg'), image)
+        result, top, side, report = measure_brace(images[0], images[1], session, 50.0, FIXED_MM,
+                                                 {}, tuple(exif_focal35(value) for value in data))
+        for name, image in (('top_overlay', top), ('side_overlay', side)):
+            if image is not None: imwrite(directory / (name + '.jpg'), image)
+        dims = result.get('dims_mm') or {}
+        complete = all(isinstance(dims.get(str(i)), (int, float)) and not isinstance(dims.get(str(i)), bool)
+                       and math.isfinite(dims[str(i)]) and dims[str(i)] > 0 for i in range(1, 12))
+        if result.get('ok') is True and (not complete or report is None):
+            result['ok'] = False
+            result['message'] = '11개 치수와 보고서를 모두 얻지 못했어요. 촬영 조건을 확인하고 다시 제출해 주세요.'
+        if result.get('ok') is True:
+            imwrite(directory / 'report.jpg', report)
+            (directory / 'dims.csv').write_text(dims_csv(result), encoding='utf-8-sig')
+        return result
+    async with measurement_lock:
+        return await run_in_threadpool(calculate)
+
+
+app.include_router(intake_router)
+
+@app.get('/operator')
+def operator_page():
+    return FileResponse(Path(__file__).parent / 'web' / 'operator.html')
+
+@app.get('/demo')
+def demo_page():
+    return FileResponse(Path(__file__).parent / 'web' / 'demo.html')
 
 
 app.mount('/', StaticFiles(directory=Path(__file__).parent / 'web', html=True), name='web_demo')
