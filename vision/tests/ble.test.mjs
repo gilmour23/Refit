@@ -15,3 +15,12 @@ test('missing acknowledgement never opens a device chooser',async()=>{
  let calls=0;const r=new BleReader({bluetooth:{requestDevice:()=>{calls++}},onState:()=>{},onSamples:()=>{}});
  await assert.rejects(r.connect(uuid,uuid,false));assert.equal(calls,0);
 });
+test('an old pending connection cannot disconnect a newer connection to the same peripheral',async()=>{
+ const ch=new EventTarget();ch.properties={notify:true};ch.startNotifications=async()=>{};ch.stopNotifications=async()=>{};
+ const device=new EventTarget();device.id='same-device';device.name='same';let release,attempt=0;
+ const server={getPrimaryService:async()=>({getCharacteristic:async()=>ch})};
+ device.gatt={connected:false,connect:async()=>{attempt++;if(attempt===1)await new Promise(r=>release=r);device.gatt.connected=true;return server;},disconnect:()=>{device.gatt.connected=false;device.dispatchEvent(new Event('gattserverdisconnected'));}};
+ const states=[];const r=new BleReader({bluetooth:{requestDevice:async()=>device},onState:s=>states.push(s),onSamples:()=>{}});
+ const old=r.connect(uuid,uuid,true);while(!release)await new Promise(r=>setImmediate(r));r.disconnect();await r.connect(uuid,uuid,true);assert.equal(device.gatt.connected,true);
+ release();await old;assert.equal(device.gatt.connected,true);assert.equal(states.at(-1).kind,'subscribed');r.disconnect();
+});

@@ -20,3 +20,8 @@ test('zero is valid live data; disconnected and stale data never remain live',()
   assert.equal(validUuid('0000ffe0-0000-1000-8000-00805f9b34fb'),true);
   assert.equal(validUuid('guess'),false);
 });
+test('resuming after a stale gap never revives old activity',async()=>{
+ const {appendSamples}=await import('../web/core.mjs');
+ const state={connected:true,lastAt:100,values:Array(100).fill(1000)};appendSamples(state,[0],3100);
+ assert.deepEqual(state.values,[0]);assert.equal(freshSignal(state,3100).rms,0);
+});

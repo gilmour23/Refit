@@ -13,7 +13,11 @@ export class BleReader {
    this.device=device;this.lost=()=>{if(generation===this.generation)this.disconnect();};device.addEventListener('gattserverdisconnected',this.lost);
    this.onState({kind:'connecting',label:'센서 연결 중…'});
    const server=await device.gatt.connect();
-   if(generation!==this.generation){device.gatt.disconnect();return;}
+   if(generation!==this.generation){
+    // A newer attempt may already own this peripheral's shared GATT connection.
+    if(this.device!==device&&(!this.device?.id||this.device.id!==device.id))device.gatt.disconnect();
+    return;
+   }
    const channel=await (await server.getPrimaryService(service.toLowerCase())).getCharacteristic(notify.toLowerCase());
    if(generation!==this.generation)return;
    if(!channel.properties.notify&&!channel.properties.indicate)throw Error('이 특성은 알림을 지원하지 않아요. UUID를 확인해 주세요.');

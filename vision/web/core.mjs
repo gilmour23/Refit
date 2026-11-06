@@ -9,6 +9,10 @@ export function freshSignal(state, now=performance.now()) {
   const samples=state.values.slice(-100);
   return {rms:Math.sqrt(samples.reduce((a,v)=>a+v*v,0)/samples.length),latest:samples.at(-1),values:samples};
 }
+export function appendSamples(state,values,now=performance.now()) {
+  if(state.lastAt==null||now-state.lastAt>2000)state.values=[];
+  state.lastAt=now;state.values=state.values.concat(values).slice(-500);
+}
 export function parseMeasurement(j) {
   if(j?.ok!==true) throw Error(j?.message || j?.detail || '사진을 측정하지 못했어요. 촬영 조건을 확인해 주세요.');
   if(typeof j.session_id!=='string'||!j.session_id.trim()) throw Error('측정 번호가 없어요.');

@@ -5,6 +5,9 @@ from pathlib import Path
 from PIL import Image
 from fastapi.testclient import TestClient
 import server
+from measure import find_hand
+import numpy as np
+assert find_hand(np.zeros((480,640,3),dtype=np.uint8)) is None
 os.environ['REFIT_VISION_TOKEN']=secrets.token_urlsafe(48)
 os.environ['REFIT_VISION_ADMIN_TOKEN']=secrets.token_urlsafe(48)
 with tempfile.TemporaryDirectory() as d:

@@ -51,7 +51,7 @@ def setup():
  print('설치 완료. START_DEMO.cmd를 실행하세요.',flush=True)
 def doctor():
  # Native-library failures are discovered before a public address is advertised.
- command="from measure import MODEL; from mediapipe.tasks.python import BaseOptions, vision; from brace_report import font; h=vision.HandLandmarker.create_from_options(vision.HandLandmarkerOptions(base_options=BaseOptions(model_asset_buffer=MODEL.read_bytes()),num_hands=1));h.close();assert getattr(font(20),'path',None),'Korean font missing';print('Model and font OK')"
+ command="from measure import MODEL; from mediapipe.tasks.python import BaseOptions, vision; from brace_report import font; h=vision.HandLandmarker.create_from_options(vision.HandLandmarkerOptions(base_options=BaseOptions(model_asset_buffer=MODEL.read_bytes()),num_hands=1));h.close();p=getattr(font(20),'path',None);from pathlib import Path;assert isinstance(p,(str,bytes)) and Path(p).is_file(),'Korean font missing';print('Model and font OK')"
  subprocess.run([str(python_path()),'-c',command],cwd=ROOT/'vision',check=True,timeout=90)
 def stop(proc):
  if proc and proc.poll() is None:

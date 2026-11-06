@@ -1,4 +1,4 @@
-import {parseMeasurement,freshSignal,readBoundedJson} from './core.mjs';
+import {parseMeasurement,freshSignal,appendSamples,readBoundedJson} from './core.mjs';
 import {BleReader} from './bluetooth.mjs';
 const $=id=>document.getElementById(id);
 let key='',authorized=false,busy=false,requestController=null,measurement=null,brace=null,reportUrl=null;
@@ -39,7 +39,7 @@ $('measure').onclick=async()=>{
 $('cancel-measure').onclick=()=>requestController?.abort();$('warning-confirm').onchange=syncButtons;
 $('clear-photo').onclick=()=>{clearResult();message('photo-message','원본 사진을 다시 선택하거나 같은 사진으로 분석해 주세요.');};
 $('register').onclick=()=>{if($('register').disabled)return;brace={session:measurement.session,dimensions:measurement.dimensions};$('brace-status').textContent=`사진에서 측정한 11개 치수 등록 · ${brace.session}`;tab('exercise');};
-const ble=new BleReader({onState:state=>{bleKind=state.kind;signal.connected=state.kind==='subscribed';signal.values=[];signal.lastAt=null;message('ble-message',state.label,state.kind==='error');$('connect-ble').disabled=['selecting','connecting','subscribed'].includes(state.kind);},onSamples:values=>{if(!signal.connected)return;signal.lastAt=performance.now();signal.values.push(...values);signal.values=signal.values.slice(-500);sampleCount+=values.length;$('sample-count').textContent=String(sampleCount);}});
+const ble=new BleReader({onState:state=>{bleKind=state.kind;signal.connected=state.kind==='subscribed';signal.values=[];signal.lastAt=null;message('ble-message',state.label,state.kind==='error');$('connect-ble').disabled=['selecting','connecting','subscribed'].includes(state.kind);},onSamples:values=>{if(!signal.connected)return;appendSamples(signal,values);sampleCount+=values.length;$('sample-count').textContent=String(sampleCount);}});
 const supported=!!navigator.bluetooth&&window.isSecureContext;
 $('browser-badge').textContent=supported?'BLE 지원 감지':'BLE 브라우저 필요';$('browser-help').textContent=supported?'이 브라우저에서 BLE 기기를 선택할 수 있어요. 펌웨어 팀의 UUID를 입력해 주세요.':'사진 측정은 이 브라우저에서 사용할 수 있어요. 센서 연결은 갤럭시 Chrome, 아이폰·아이패드 Bluefy에서 HTTPS 주소로 열어주세요.';
 for(const id of ['service-uuid','notify-uuid']){$(id).value=localStorage.getItem('refit-'+id)||'';}
