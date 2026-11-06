@@ -37,7 +37,7 @@ jobs:
         env:
           PYTHONPATH: vision
       - name: Browser protocol tests
-        run: node --test vision/tests/web-core.test.mjs vision/tests/ble.test.mjs vision/tests/intake-ui.test.mjs vision/tests/photo-tabs.test.mjs
+        run: node --test vision/tests/web-core.test.mjs vision/tests/ble.test.mjs vision/tests/intake-ui.test.mjs vision/tests/photo-tabs.test.mjs vision/tests/fabrication.test.mjs vision/tests/operator-record.test.mjs
       - name: JavaScript syntax
         run: |
           node --check vision/web/app.js
