@@ -1,0 +1,170 @@
+/* Approved Canva layout. Keep capture and record state rules in intake.css. */
+:root { font-family: 'Noto Sans KR', 'Noto Sans CJK KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+/* Participant: a continuous form and two illustrated capture views. */
+.intake-page .app-bar { max-width: 478px; height: 70px; padding: 0 24px; }
+.intake-page .brand { font-size: 26px; }
+.intake-page .app-bar-title { font-size: 13px; }
+.intake-page .app-bar summary { font-size: 12px; }
+.intake-main { max-width: 478px; padding: 26px 24px 0; }
+.page-heading h1 { line-height: 1.4; }
+.page-heading p { margin-top: 10px; }
+.connection-status { color: var(--accent); }
+.identity-fields { grid-template-columns: minmax(0, 1.25fr) minmax(140px, 1fr); gap: 16px; margin-bottom: 26px; }
+.identity-fields label, .identity-fields legend { font-size: 14px; }
+.hand-choices { gap: 6px; }
+.hand-choices label { min-width: 0; }
+.hand-choices span { border-radius: 7px; font-size: 15px; white-space: nowrap; }
+.capture-preparation { margin-bottom: 22px; }
+.capture-preparation h2 { font-size: 17px; line-height: 1.6; margin-bottom: 8px; }
+.capture-preparation p { line-height: 1.8; }
+.capture-preparation .example-hand-note { font-size: 12px; }
+.photo-tabs { gap: 25px; }
+.photo-tabs button { font-size: 16px; font-weight: 400; }
+.photo-tabs button > span { font-size: 11px; margin-left: 6px; }
+.photo-direction { padding: 21px 0 15px; }
+.photo-direction h2 { line-height: 1.5; }
+.photo-direction p { font-size: 14px; line-height: 1.8; margin-top: 7px; }
+.preview-frame { min-height: 0; border-radius: 0; background: #fcf5eb; }
+.capture-example img, .preview-frame > img { height: 404px; }
+.capture-example figcaption { font-size: 12px; line-height: 1.6; }
+.capture-check { margin-top: 12px; line-height: 1.8; }
+.photo-selection { padding: 14px 0; }
+.picker-button.primary, .submission > button.primary { font-size: 18px; border-radius: 10px; }
+.library-picker { font-size: 14px; }
+.shooting-help { margin: 16px 0 22px; }
+.shooting-help summary { font-size: 13px; }
+.consent { gap: 10px; font-size: 13px; line-height: 1.8; }
+.selection-count { margin-top: 22px; font-size: 13px; }
+
+/* Maker website: desktop rail, photograph and paired dimensions. */
+.operator-page .app-bar { height: 80px; padding: 0 36px; gap: 28px; }
+.operator-page .brand { font-size: 28px; }
+.operator-page .app-bar-title { font-size: 14px; }
+.operator-nav { display: flex; align-items: center; align-self: stretch; padding: 0 2px; border-bottom: 3px solid var(--accent); font-size: 14px; font-weight: 600; }
+.operator-main { max-width: 1600px; padding: 0 36px; }
+.operator-layout { grid-template-columns: 214px minmax(0, 1fr); gap: 34px; min-height: calc(100vh - 80px); }
+.participant-rail { padding: 30px 24px 26px 0; }
+.rail-heading { margin-bottom: 18px; }
+.search-label input { padding: 13px 12px !important; }
+.list-count { margin-bottom: 18px; }
+.participant-list button { padding: 20px 13px; }
+.participant-list button.active { padding-left: 10px; }
+.participant-list strong { overflow-wrap: anywhere; }
+#participant-detail { padding: 30px 0; }
+.record-header { align-items: flex-start; padding-bottom: 0; border-bottom: 0; }
+.sheet-title { margin-bottom: 12px; }
+.record-title-line { gap: 18px; }
+.record-title-line h2 { max-width: 100%; font-size: 30px; line-height: 1.4; letter-spacing: -.7px; overflow-wrap: anywhere; }
+.record-hand { padding-left: 18px; font-size: 24px; white-space: nowrap; }
+.record-meta { margin-top: 10px; font-size: 12px; }
+.record-number { margin-top: 4px; font-size: 12px; }
+.record-state { flex-shrink: 0; max-width: 235px; margin-top: 5px; }
+.record-status { display: inline-block; padding: 7px 12px; border-radius: 5px; background: #eaf3ef; font-size: 13px; font-weight: 600; }
+.record-state p { margin-top: 10px; }
+.fabrication-files { padding: 20px 0; }
+.fabrication-files button, .fabrication-files summary { min-height: 46px; }
+.original-menu summary { padding: 11px 16px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font-weight: 600; }
+.original-actions { top: 48px; }
+.operator-page #record-message { margin: 13px 0 0; font-size: 12px; }
+.result-layout { grid-template-columns: minmax(0, 1fr) 420px; gap: 32px; margin-top: 22px; }
+.section-heading { margin-bottom: 16px; }
+.section-heading h3, .dimension-heading h3 { font-size: 20px; line-height: 1.5; letter-spacing: -.4px; }
+.dimension-heading { margin-bottom: 0; }
+.table-intro { margin-top: 5px; margin-bottom: 19px; }
+.result-photo-tabs { gap: 28px; margin-bottom: 18px; }
+.result-photo-tabs button { min-height: 46px; padding: 12px 0; font-size: 14px; }
+.operator-page .measurement-photos img { height: 570px; max-height: none; }
+.photo-empty { min-height: 570px; background: #f3f5f4; }
+.fabrication-table th:first-child { width: 45%; }
+.fabrication-table thead th { padding: 13px 0; font-weight: 400; }
+.fabrication-table tbody th { padding: 20px 6px 20px 0; font-size: 15px; }
+.fabrication-table tbody th small { margin-top: 6px; line-height: 1.7; }
+.fabrication-table .dimension-number { margin-right: 5px; }
+.measurement-value { font-size: 23px; }
+.dimension-panel .dimension-note { font-size: 12px; }
+.dimension-panel .length-heading { margin: 26px 0 8px; }
+.numbered-dimensions > div { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 14px 0; }
+.numbered-dimensions dd { font-size: 23px; }
+.landmark-help { border-top: 0; padding-top: 0; }
+.fabrication-review { margin-top: 28px; padding-top: 20px; }
+.fabrication-review h3 { font-size: 16px; margin-bottom: 8px; }
+.record-footer { margin-top: 20px; }
+
+@media (max-width: 1250px) {
+  .operator-main { padding: 0 24px; }
+  .operator-layout { grid-template-columns: 185px minmax(0, 1fr); gap: 24px; }
+  .participant-rail { padding-right: 18px; }
+  .result-layout { grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; }
+  .measurement-value { font-size: 21px; }
+  .fabrication-table tbody th { font-size: 14px; }
+  .result-photo-tabs { gap: 18px; }
+  .result-photo-tabs button { font-size: 12px; }
+  .operator-page .measurement-photos img { height: 510px; }
+  .photo-empty { min-height: 510px; }
+}
+@media (max-width: 1050px) {
+  .result-layout { grid-template-columns: 1fr; }
+  .dimension-panel { margin-top: 12px; }
+  .operator-page .measurement-photos img { height: auto; max-height: 570px; }
+  .photo-empty { min-height: 360px; }
+  .record-header { flex-direction: column; gap: 14px; }
+  .record-state { max-width: none; margin-top: 0; text-align: left; }
+  .record-state p { display: inline; margin-left: 10px; }
+}
+@media (max-width: 650px) {
+  .operator-page .app-bar { height: 64px; padding: 0 20px; gap: 22px; }
+  .operator-page .app-bar-title { display: none; }
+  .operator-page .brand { font-size: 24px; }
+  .operator-nav { font-size: 13px; }
+  .operator-page #logout { padding-right: 0; font-size: 12px; }
+  .operator-main { padding: 0 20px; }
+  .operator-layout { grid-template-columns: 1fr; gap: 0; }
+  .participant-rail { padding: 20px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .participant-list button { min-width: 165px; max-width: 240px; padding: 15px 12px; }
+  .participant-list button.active { padding-left: 10px; }
+  .list-count { margin-bottom: 6px; }
+  #participant-detail { padding-top: 24px; }
+  .record-title-line h2 { font-size: 27px; }
+  .record-hand { padding-left: 14px; font-size: 21px; }
+  .record-state p { display: block; margin: 7px 0 0; }
+  .fabrication-files { gap: 8px; }
+  .fabrication-files button, .fabrication-files summary { padding: 10px 12px; font-size: 12px; }
+  .fabrication-table th:first-child { width: 44%; }
+  .fabrication-table .dimension-number { width: 19px; height: 19px; margin-right: 4px; font-size: 12px; }
+  .measurement-value { font-size: 20px; }
+  .numbered-dimensions dd { font-size: 22px; }
+}
+@media (max-width: 380px) {
+  .intake-page .app-bar { gap: 13px; padding: 0 20px; }
+  .intake-page .brand { font-size: 24px; }
+  .intake-page .app-bar-title { font-size: 11px; }
+  .intake-main { padding-right: 20px; padding-left: 20px; }
+  .identity-fields { grid-template-columns: minmax(0, 1fr) 130px; gap: 12px; }
+  .identity-fields input:not([type=radio]) { padding-right: 10px; padding-left: 10px; }
+  .photo-tabs { gap: 22px; }
+  .photo-tabs button { font-size: 15px; }
+  .capture-example img, .preview-frame > img { height: 360px; }
+  .operator-main { padding: 0 16px; }
+  .fabrication-table th:first-child { width: 42%; }
+  .measurement-value { font-size: 18px; }
+}
+@media (max-width: 320px) {
+  .identity-fields { grid-template-columns: 1fr; }
+  .intake-page .app-bar-title { display: none; }
+}
+@media print {
+  .operator-main { max-width: none; padding: 0; }
+  .operator-layout { display: block; min-height: 0; }
+  #participant-detail { padding: 0; }
+  .record-header { flex-direction: row; break-inside: avoid; }
+  .result-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6mm; margin-top: 5mm; }
+  .operator-page .measurement-photos img { height: auto; max-height: 85mm; }
+  .dimension-panel { margin-top: 0; }
+  .dimension-heading h3 { font-size: 18px; }
+  .fabrication-table tbody th { padding: 12px 5px 12px 0; font-size: 12px; }
+  .measurement-value { font-size: 18px; }
+  .numbered-dimensions dd { font-size: 19px; }
+  .record-hand { font-size: 21px; }
+  .record-status { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

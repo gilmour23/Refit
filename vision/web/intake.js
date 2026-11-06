@@ -8,9 +8,9 @@ for(const view of ['top','side'])$(view+'-tab').onclick=()=>showView(view);
 $('next-photo').onclick=()=>{showView('side');$('side-tab').focus();};
 function sync(){for(const which of ['top','side'])$(which+'-ready').textContent=photos[which]?'선택됨':which==='top'?'1 / 2':'2 / 2';$('next-photo').hidden=!photos.top||!!photos.side;$('photo-count').textContent=photos.top&&photos.side?'사진 2장이 준비됐어요. 이름·측정할 손·보관 동의를 확인한 뒤 제출해 주세요.':photos.top?'측면 사진 1장을 더 선택해 주세요.':photos.side?'손등 사진 1장을 더 선택해 주세요.':'손등·측면 사진을 한 장씩 선택해 주세요.';const accepted=!!receipt;for(const field of $('intake-form').elements)field.disabled=busy||accepted;$('submit-intake').disabled=busy||accepted||!ready||!photos.top||!photos.side;}
 async function checkKey(candidate){
- ready=false;key='';sync();say('connection-status','측정 서버 연결 확인 중…');
+ ready=false;key='';sync();say('connection-status','사진 접수 가능 여부를 확인하고 있어요.');
  try{if(!/^[A-Za-z0-9_-]{32,256}$/.test(candidate))throw Error('운영자가 제공한 QR로 접속하거나 연결키를 입력해 주세요.');
- const r=await fetch('/demo/check',{method:'POST',headers:{Authorization:`Bearer ${candidate}`},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});const j=await readBoundedJson(r,8192);if(!r.ok)throw Error(j.detail||'서버 연결키를 확인해 주세요.');if(!j.model_ready)throw Error('측정 서버 준비가 필요해요. 운영자에게 알려 주세요.');key=candidate;ready=true;$('upload-key').value='';$('key-settings').open=false;say('connection-status','측정 서버에 연결됐어요.');
+ const r=await fetch('/demo/check',{method:'POST',headers:{Authorization:`Bearer ${candidate}`},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});const j=await readBoundedJson(r,8192);if(!r.ok)throw Error(j.detail||'서버 연결키를 확인해 주세요.');if(!j.model_ready)throw Error('측정 서버 준비가 필요해요. 운영자에게 알려 주세요.');key=candidate;ready=true;$('upload-key').value='';$('key-settings').open=false;say('connection-status','손등·측면 사진을 차례로 제출해 주세요.');
  }catch(e){$('key-settings').open=true;say('connection-status',e.message||'연결하지 못했어요.',true);}finally{sync();}
 }
 $('check-key').onclick=()=>checkKey($('upload-key').value.trim());
