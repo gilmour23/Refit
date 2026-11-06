@@ -3,8 +3,10 @@ const $=id=>document.getElementById(id);
 let key='',ready=false,busy=false,receipt=null,pollTimer=null,request=null;
 const photos={top:null,side:null},previews={top:null,side:null};
 function say(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error);}
-for(const view of ['top','side'])$(view+'-tab').onclick=()=>{for(const which of ['top','side']){$(which+'-photo-panel').hidden=which!==view;$(which+'-tab').setAttribute('aria-selected',String(which===view));}};
-function sync(){for(const which of ['top','side'])$(which+'-ready').textContent=photos[which]?'선택됨':which==='top'?'1 / 2':'2 / 2';$('photo-count').textContent=photos.top&&photos.side?'사진 2장이 준비됐어요.':photos.top||photos.side?'나머지 사진 1장을 선택해 주세요.':'사진 2장을 선택해 주세요.';const accepted=!!receipt;for(const field of $('intake-form').elements)field.disabled=busy||accepted;$('submit-intake').disabled=busy||accepted||!ready||!photos.top||!photos.side;}
+function showView(view){for(const which of ['top','side']){$(which+'-photo-panel').hidden=which!==view;$(which+'-tab').setAttribute('aria-selected',String(which===view));}}
+for(const view of ['top','side'])$(view+'-tab').onclick=()=>showView(view);
+$('next-photo').onclick=()=>{showView('side');$('side-tab').focus();};
+function sync(){for(const which of ['top','side'])$(which+'-ready').textContent=photos[which]?'선택됨':which==='top'?'1 / 2':'2 / 2';$('next-photo').hidden=!photos.top||!!photos.side;$('photo-count').textContent=photos.top&&photos.side?'사진 2장이 준비됐어요. 이름·측정할 손·보관 동의를 확인한 뒤 제출해 주세요.':photos.top?'측면 사진 1장을 더 선택해 주세요.':photos.side?'손등 사진 1장을 더 선택해 주세요.':'손등·측면 사진을 한 장씩 선택해 주세요.';const accepted=!!receipt;for(const field of $('intake-form').elements)field.disabled=busy||accepted;$('submit-intake').disabled=busy||accepted||!ready||!photos.top||!photos.side;}
 async function checkKey(candidate){
  ready=false;key='';sync();say('connection-status','측정 서버 연결 확인 중…');
  try{if(!/^[A-Za-z0-9_-]{32,256}$/.test(candidate))throw Error('운영자가 제공한 QR로 접속하거나 연결키를 입력해 주세요.');
@@ -16,7 +18,7 @@ for(const which of ['top','side'])for(const kind of ['camera','file'])$(which+'-
  const file=event.target.files[0];if(!file)return;
  if(file.size===0||file.size>20*1024*1024){say('upload-message','사진 한 장은 20MB 이하여야 해요.',true);event.target.value='';return;}
  photos[which]=file;if(previews[which])URL.revokeObjectURL(previews[which]);previews[which]=URL.createObjectURL(file);
- const img=$(which+'-preview');img.onload=()=>{$(which+'-placeholder').hidden=true;img.hidden=false;};img.onerror=()=>{img.hidden=true;$(which+'-placeholder').hidden=false;$(which+'-name').textContent=file.name+' · 미리보기 없이 원본 전송';};img.src=previews[which];$(which+'-name').textContent=file.name;say('upload-message','');sync();
+ const img=$(which+'-preview');img.onload=()=>{$(which+'-placeholder').hidden=true;img.hidden=false;};img.onerror=()=>{img.hidden=true;$(which+'-placeholder').hidden=false;$(which+'-name').textContent=file.name+' · 미리보기 없이 원본 전송';};img.src=previews[which];$(which+'-name').textContent='내 사진 · '+file.name;say('upload-message','');sync();
 };
 async function checkStatus(){
  clearTimeout(pollTimer);if(!receipt)return;const target=receipt;$('check-status').disabled=true;

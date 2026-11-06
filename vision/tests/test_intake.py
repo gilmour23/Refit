@@ -115,5 +115,16 @@ class IntakeFlow(unittest.TestCase):
         self.assertEqual(self.client.get('/admin/intakes').status_code,401)
         self.assertEqual(self.client.get('/admin/intakes/not-an-id',headers=ADMIN).status_code,400)
         self.assertEqual(self.client.get('/participants/intake.sqlite').status_code,401)
+    def test_public_capture_examples_do_not_expose_camera_metadata_or_private_uploads(self):
+        for view in ('top', 'side'):
+            response = self.client.get('/guide-'+view+'.webp')
+            self.assertEqual(response.status_code, 200)
+            image = Image.open(BytesIO(response.content))
+            self.assertEqual(image.format, 'WEBP')
+            self.assertFalse(image.getexif())
+            self.assertNotIn('xmp', image.info)
+        self.assertEqual(self.client.get('/guide-private.webp').status_code, 401)
+        self.assertEqual(self.client.post('/guide-top.webp').status_code, 401)
+        self.assertEqual(self.client.get('/admin/intakes').status_code, 401)
 
 if __name__=='__main__':unittest.main()
