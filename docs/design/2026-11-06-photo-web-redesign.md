@@ -1,0 +1,11 @@
+# Photo intake visual correction
+
+User requested rebuilding the participant/operator screens after rejecting the generic web styling. Preserve the previously selected Hinge Health/Kaia direction, approved Figma file IJiuyhOIjjRMYfbB4xb5H5 node3:734, and native ReFitUi.kt primitives. Use native white/ink/teal tokens, 28px page titles, 16–18px body text, 56–60px primary actions and 20–24px page gutters. The Figma screen is an exercise app: adapt its action hierarchy rather than incorrectly using wrist-extension artwork as a photo-taking pose. No exercise/static Figma art is reused in an unrelated pose.
+
+Participant: compact ReFit app bar, direct measurement heading, name/hand, top/side photo tabs with one large original preview, short pose-specific instruction, primary camera action and secondary library action. Small expandable preparation details, explicit retention consent, submit and receipt states. Remove marketing hero, numbered section eyebrows, generic hand SVGs, dashed upload tiles and duplicated instructional text.
+
+Operator: compact app bar, search/participant rail, record header, large top/side image switcher and unboxed aligned eleven-dimension table. Match measurement badge colors to existing overlays. Keep downloads/deletion, status, warnings, authorization and private image blobs. At laptop widths, keep photos and dimensions adjacent; small screens stack.
+
+Only frontend layout and view switching change. Identity fields, eleven definitions, APIs, retention, permissions, queue, APK and BLE behavior remain. Test tab switching and photo selection states; existing API/receipt tests remain. Show a local preview from the updated source and label sample measurements clearly. Existing source photos are never added to the repository or runnable ZIP.
+
+Verification: 23 Python and 10 Node tests pass locally. Actual Chrome preview connected through the managed preview; participant server connection and top/side tab instructions were verified. Operator tab behavior has automated coverage. Operator visual conversation preview uses the team-provided existing report and its exact JSON values, not fabricated new measurements. No source photo/report or QA fixture is added to source/ZIP. Real-device capture and successful new-photo inference remain unverified.

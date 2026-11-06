@@ -1,5 +1,6 @@
 import {readBoundedJson} from './core.mjs';
 const $=id=>document.getElementById(id);
+for(const view of ['top','side'])$('result-'+view+'-tab').onclick=()=>{for(const which of ['top','side']){$('result-'+which+'-panel').hidden=which!==view;$('result-'+which+'-tab').setAttribute('aria-selected',String(which===view));}};
 const labels={queued:'분석 대기',processing:'분석 중',complete:'측정 완료',failed:'확인 필요'};
 const definitions={
  1:['0번에서 팔 쪽 4cm 폭','손목 0점에서 팔 쪽으로 40mm'],2:['① 위치 두께','①과 같은 높이 · 측면'],
