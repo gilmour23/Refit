@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import * as workbench from '../web/workbench.mjs';
 function screen(file){
  const nodes=new Map();
  function node(id){if(!nodes.has(id))nodes.set(id,{id,hidden:false,disabled:false,textContent:'',elements:[],attributes:{},classList:{toggle(){}},focus(){this.focused=true;},setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k];}});return nodes.get(id);}
- const context=vm.createContext({document:{getElementById:node,querySelectorAll:()=>[]},window:{addEventListener(){}},location:{hash:''},history:{replaceState(){}},URL,AbortController,AbortSignal,FormData,setTimeout,clearTimeout,setInterval,clearInterval});
+ const context=vm.createContext({...workbench,document:{getElementById:node,querySelectorAll:()=>[]},window:{addEventListener(){}},location:{hash:''},history:{replaceState(){}},URL,AbortController,AbortSignal,FormData,setTimeout,clearTimeout,setInterval,clearInterval});
  const source=fs.readFileSync(new URL('../web/'+file,import.meta.url),'utf8').split('\n').filter(line=>!line.startsWith('import ')&&!line.startsWith('const joined=')).join('\n');
  vm.runInContext(source,context);return {node,context};
 }

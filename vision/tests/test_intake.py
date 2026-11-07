@@ -110,7 +110,7 @@ class IntakeFlow(unittest.TestCase):
             r=self.upload();self.assertEqual(r.status_code,202,r.text);record=self.wait(r.json()['id']).json()
         self.assertEqual(record['status'],'failed');self.assertNotIn('report',record['assets'])
     def test_shells_are_public_but_unknown_assets_and_private_paths_are_not(self):
-        for url in ('/','/operator','/demo','/intake.js','/operator.js','/intake.css','/layout.css','/fabrication.mjs'):
+        for url in ('/','/operator','/demo','/intake.js','/operator.js','/intake.css','/layout.css','/maker.css','/workbench.mjs','/fabrication.mjs'):
             self.assertEqual(self.client.get(url).status_code,200,url)
         self.assertEqual(self.client.get('/admin/intakes').status_code,401)
         self.assertEqual(self.client.get('/admin/intakes/not-an-id',headers=ADMIN).status_code,400)
