@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as receipts from '../web/receipt.mjs';
 test('a prior submission response cannot overwrite the next receipt', async()=>{
 let resolveOld;
 const nodes = new Map();
@@ -12,7 +13,7 @@ function node(id) {
   });
   return nodes.get(id);
 }
-const ctx = vm.createContext({
+const ctx = vm.createContext({...receipts,
   document: { getElementById: node }, window: { addEventListener() {} },
   URL, console, setTimeout, clearTimeout, AbortSignal, AbortController, FormData,
   readBoundedJson: async r => r.json(), fetch: () => new Promise(r => { resolveOld = r; }),

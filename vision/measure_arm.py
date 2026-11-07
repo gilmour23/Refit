@@ -349,6 +349,10 @@ def measure_view(img, marker_mm=50.0, wrist=None, elbow=None, auto_wrist=True, c
     view["pts"] = pts  # 손 관절점 21개 (measure_brace.py에서 사용)
     manual_wrist = wrist
     wrist = np.asarray(wrist, float) * f if wrist is not None else pts[WRIST]
+    if manual_wrist is not None:
+        pts = pts.copy()
+        pts[WRIST] = wrist
+        view['pts'] = pts
 
     mask, bg, to_arm = segment_arm(img, pts, wrist)
     view["mask"] = mask
@@ -678,3 +682,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

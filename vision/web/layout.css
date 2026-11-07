@@ -168,3 +168,51 @@
   .record-hand { font-size: 21px; }
   .record-status { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+
+/* Measurement review: controls stay close to the photograph they affect. */
+#review-filter { width:100%; margin:10px 0; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fff; font:inherit; font-size:13px; }
+.revision-bar,.photo-tools,.correction-choices,.correction-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.revision-bar { border-top:1px solid var(--line); padding:13px 0; font-size:13px; }
+.revision-bar span { color:var(--muted); }
+.revision-bar select,.photo-tools select,.correction-choices select { padding:7px 10px; background:#fff; border:1px solid var(--line); border-radius:5px; font:inherit; }
+.photo-scroll { max-height:620px; overflow:auto; background:#f3f5f4; }
+.photo-stage { position:relative; width:100%; line-height:0; }
+.operator-page .measurement-photos .photo-stage img { display:block; width:100%; height:auto; max-height:none; object-fit:fill; }
+.geometry-layer { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.geometry-layer.editing { cursor:crosshair; touch-action:manipulation; }
+.photo-tools { justify-content:space-between; margin-top:12px; font-size:12px; }
+.photo-tools label { display:flex; align-items:center; gap:7px; }
+.calibration-info { color:var(--muted); font-size:12px; line-height:1.8; }
+.dimension-pick { background:none; border:1px solid transparent; border-radius:4px; padding:8px 3px; cursor:pointer; white-space:nowrap; color:inherit; }
+.selected-dimension { outline:2px solid var(--accent); outline-offset:1px; background:#edf6f1; }
+.numbered-dimensions [role=button] { cursor:pointer; border-radius:3px; }
+.correction-panel,.retake-controls { border-top:1px solid var(--line); margin-top:20px; padding-top:16px; font-size:13px; line-height:1.8; }
+.correction-panel summary,.retake-controls summary { cursor:pointer; font-weight:600; }
+.correction-panel button,.retake-controls button { font-size:12px; padding:9px 10px; }
+.correction-choices { align-items:flex-end; }
+.correction-actions { margin:12px 0; }
+.review-controls { margin-top:18px; padding:18px 0; border-top:1px solid var(--line); }
+.review-controls .check { display:flex; gap:9px; align-items:flex-start; margin-bottom:12px; }
+.review-controls p { font-size:12px; color:var(--accent); }
+.retake-controls textarea { display:block; width:100%; box-sizing:border-box; margin:10px 0; padding:10px; border:1px solid var(--line); border-radius:5px; font:inherit; }
+.retake-controls > label { margin-right:14px; }
+@media print {
+ .revision-bar select { appearance:none; border:0; }
+ .photo-tools,.correction-panel,.review-controls,.retake-controls { display:none !important; }
+ .geometry-layer { display:none; }
+ .photo-scroll { max-height:none; overflow:visible; }
+ .photo-stage { width:100% !important; }
+ .operator-page .measurement-photos .photo-stage img { height:auto; max-height:85mm; object-fit:contain; }
+ .dimension-pick { padding:0; }
+ .selected-dimension { outline:0; background:none; }
+}
+.submission-preview { border-top:1px solid var(--line); padding-top:20px; margin-bottom:24px; font-size:13px; line-height:1.8; }
+.submission-preview h2 { font-size:17px; }
+.confirmation-photos { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.confirmation-photos figure { margin:0; }
+.confirmation-photos img { width:100%; height:145px; object-fit:contain; background:#f3f5f4; }
+.confirmation-photos figcaption { font-size:12px; }
+.retake-form { margin-top:24px; border-top:1px solid var(--line); padding-top:20px; }
+.retake-form > div { margin-bottom:20px; }
+.retake-form .retake-guide { width:115px; height:145px; object-fit:contain; display:block; margin:12px auto; }
+.retake-form img:not(.retake-guide) { width:100%; max-height:260px; object-fit:contain; }

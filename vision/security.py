@@ -12,7 +12,7 @@ except ImportError:
 
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
 MAX_IMAGE_PIXELS = 24_000_000
-PUBLIC_WEB_PATHS = frozenset({'/', '/app.js', '/core.mjs', '/bluetooth.mjs', '/style.css', '/favicon.svg', '/operator', '/demo', '/intake.js', '/operator.js', '/intake.css', '/layout.css', '/fabrication.mjs', '/guide-top.webp', '/guide-side.webp'})
+PUBLIC_WEB_PATHS = frozenset({'/', '/app.js', '/core.mjs', '/bluetooth.mjs', '/style.css', '/favicon.svg', '/operator', '/demo', '/intake.js', '/operator.js', '/intake.css', '/layout.css', '/fabrication.mjs', '/geometry.mjs', '/receipt.mjs', '/guide-top.webp', '/guide-side.webp'})
 
 
 class VisionSecurityMiddleware:

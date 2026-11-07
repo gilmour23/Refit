@@ -15,5 +15,5 @@ export function hasCompleteDimensions(record){return record?.status==='complete'
 export function measurementFilename(record,asset,extension){
   const safe=String(record.display_name||'사용자').normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g,'_').replace(/[. ]+$/g,'').slice(0,40)||'사용자';
   const titles={report:'측정표',csv:'치수',top_original:'손등원본',side_original:'측면원본'};
-  return `ReFit_${safe}_${record.hand==='left'?'왼손':'오른손'}_${record.id}_${titles[asset]||'자료'}.${extension}`;
+  return `ReFit_${safe}_${record.hand==='left'?'왼손':'오른손'}_${record.id}${record.revision?'_v'+record.revision:''}_${titles[asset]||'자료'}.${extension}`;
 }

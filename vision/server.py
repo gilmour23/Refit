@@ -269,8 +269,10 @@ async def process_intake(directory, session):
             return {'ok': False, 'session_id': session, 'message': '사진을 읽지 못했어요. 원본 사진을 다시 제출해 주세요.'}
         for name, image in zip(('top', 'side'), images):
             imwrite(directory / (name + '.jpg'), image)
+        correction_file = directory / 'corrections.json'
+        corrections = json.loads(correction_file.read_text(encoding='utf-8')) if correction_file.exists() else {}
         result, top, side, report = measure_brace(images[0], images[1], session, 50.0, FIXED_MM,
-                                                 {}, tuple(exif_focal35(value) for value in data))
+                                                 corrections, tuple(exif_focal35(value) for value in data))
         for name, image in (('top_overlay', top), ('side_overlay', side)):
             if image is not None: imwrite(directory / (name + '.jpg'), image)
         dims = result.get('dims_mm') or {}
