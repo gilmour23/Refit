@@ -195,7 +195,8 @@ class RevisionPersistence(unittest.TestCase):
         from intake import IntakeStore
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);id='c'*32;(root/id).mkdir();(root/id/'top.original').write_bytes(photo())
-            with sqlite3.connect(root/'intake.sqlite') as c:
+            from contextlib import closing
+            with closing(sqlite3.connect(root/'intake.sqlite')) as c, c:
                 c.execute('CREATE TABLE records (id TEXT PRIMARY KEY, display_name TEXT, hand TEXT, created_at TEXT, updated_at TEXT, status TEXT,receipt_hash TEXT,message TEXT,result TEXT,top_type TEXT,side_type TEXT)')
                 c.execute('INSERT INTO records VALUES (?,?,?,?,?,?,?,?,?,?,?)',(id,'예전 사용자','left','then','then','complete','hash','old','{"ok":true}', 'image/jpeg','image/jpeg'))
             store=IntakeStore(root);record=store.version(id,1)
