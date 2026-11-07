@@ -37,7 +37,7 @@ async function selectRecord(id,revision=null,discard=false){
  if(!discard&&!canLeave())return;
  if(selected!==id){activeStep='photo';activeDimension=null;}
  clearDetail();selected=id;const version=epoch;controller=new AbortController();const signal=controller.signal;
- for(const b of $('participant-list').querySelectorAll('button'))b.classList.toggle('active',b.dataset.id===id);
+ for(const b of $('participant-list').querySelectorAll('button')){b.classList.toggle('active',b.dataset.id===id);b.setAttribute('aria-pressed',String(b.dataset.id===id));}
  $('empty-selection').querySelector('h2').textContent='측정 기록을 불러오고 있어요';
  try{const r=await api('/admin/intakes/'+id+(revision?`?revision=${revision}`:''),{signal});const record=await readBoundedJson(r,256*1024);if(version!==epoch)return;current=record;draft=new CorrectionDraft(record.overrides||{});$('review-ack').checked=false;$('retake-top').checked=false;$('retake-side').checked=false;$('retake-reason').value='';
  const choices=(record.history||[{revision:record.revision||1,source:'upload'}]).map(item=>{const option=document.createElement('option');option.value=String(item.revision);option.textContent=`v${item.revision} · ${item.source==='correction'?'위치 보정':item.source==='retake'?'재촬영':'최초 사진'}${item.status==='failed'?' · 계산 실패':''}`;return option;});$('revision-select').replaceChildren(...choices);$('revision-select').value=String(record.revision||1);$('revision-note').textContent=isLatest()?'현재 결과 · 이전 버전은 목록에서 확인할 수 있어요.':`이전 결과입니다. 현재 버전은 v${record.current_revision}입니다.`;
@@ -56,7 +56,16 @@ async function refresh(){
  if(!key||listBusy)return;listBusy=true;const version=sessionEpoch;
  try{const q=$('search').value.trim();const r=await api(`/admin/intakes?q=${encodeURIComponent(q)}&review=${encodeURIComponent($('review-filter').value||'')}&limit=30&offset=${offset}`,{signal:AbortSignal.timeout(15000)});const j=await readBoundedJson(r,256*1024);if(version!==sessionEpoch)return;total=j.count;
  $('total-count').textContent=`${total}건 · 5초마다 갱신`;$('page-label').textContent=`${Math.floor(offset/30)+1} / ${Math.max(1,Math.ceil(total/30))}`;$('previous').disabled=offset===0;$('next').disabled=offset+30>=total;
- const buttons=j.items.map(record=>{const b=document.createElement('button');b.type='button';b.dataset.id=record.id;b.classList.toggle('active',selected===record.id);const name=document.createElement('strong'),state=document.createElement('span'),meta=document.createElement('span'),number=document.createElement('span');name.textContent=record.display_name;state.textContent=(labels[record.status]||record.status)+' · '+(reviewLabels[record.review_status]||'검토 대기');state.className='status-'+record.status;meta.textContent=`${record.hand==='left'?'왼손':'오른손'} · ${stamp(record.created_at)}`;number.textContent=record.id.slice(0,8);b.append(name,state,meta,number);b.onclick=()=>selectRecord(record.id);return b;});
+ const buttons=j.items.map(record=>{
+  const b=document.createElement('button');b.type='button';b.dataset.id=record.id;b.classList.toggle('active',selected===record.id);b.setAttribute('aria-pressed',String(selected===record.id));
+  const name=document.createElement('strong'),hand=document.createElement('span'),review=document.createElement('span'),state=document.createElement('span'),meta=document.createElement('span');
+  name.className='queue-name';name.textContent=record.display_name;
+  hand.className='queue-hand';hand.textContent=record.hand==='left'?'왼손':'오른손';
+  review.className='queue-review review-'+record.review_status;review.textContent=reviewLabels[record.review_status]||'검토 대기';
+  state.className='queue-processing status-'+record.status;state.textContent=labels[record.status]||record.status;
+  meta.className='queue-meta';meta.textContent=stamp(record.created_at)+' · '+record.id.slice(0,8);
+  b.append(name,hand,review,state,meta);b.onclick=()=>selectRecord(record.id);return b;
+ });
  if(!buttons.length){const empty=document.createElement('p');empty.className='fine';empty.textContent=q?'검색 결과가 없어요.':'아직 접수된 사진이 없어요. 참가자 QR을 안내해 주세요.';buttons.push(empty);}$('participant-list').replaceChildren(...buttons);
  if(selected){const row=j.items.find(x=>x.id===selected);if(row&&current&&!draft?.dirty&&!actionBusy&&(row.updated_at!==current.updated_at||row.status!==current.status)){const pinned=isLatest()?null:current.revision;selectRecord(selected,pinned,true);}}
  say('');
@@ -96,7 +105,7 @@ function drawGeometry(view){
   if(card?.length===4)shape('polygon',{points:card.map(p=>p.join(',')).join(' '),fill:'none',stroke:'#db8500','stroke-width':2,'vector-effect':'non-scaling-stroke'});
   const pts=editing&&draft.points.length?draft.points:(editing&&draft.kind==='card'?card||[]:wrist?[wrist]:[]);
   const radius=Math.max(geometry.width,geometry.height)/90;
-  pts.forEach((p,i)=>{shape('circle',{cx:p[0],cy:p[1],r:radius,fill:'#fff',stroke:'#12684f','stroke-width':2,'vector-effect':'non-scaling-stroke'});const text=shape('text',{x:p[0],y:p[1],fill:'#12684f','font-size':radius*1.3,'text-anchor':'middle','dominant-baseline':'central'});text.textContent=editing&&draft.kind==='card'?String(i+1):'0';});
+  pts.forEach((p,i)=>{shape('circle',{cx:p[0],cy:p[1],r:radius,fill:'#fff',stroke:'#3658bd','stroke-width':2,'vector-effect':'non-scaling-stroke'});const text=shape('text',{x:p[0],y:p[1],fill:'#3658bd','font-size':radius*1.3,'text-anchor':'middle','dominant-baseline':'central'});text.textContent=editing&&draft.kind==='card'?String(i+1):'0';});
  }
 }
 function showCalibration(){

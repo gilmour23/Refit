@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
   <title>Re:Fit · 보조기 제작 치수</title><link rel="icon" href="/favicon.svg">
-  <link rel="stylesheet" href="/intake.css"><link rel="stylesheet" href="/layout.css"><link rel="stylesheet" href="/maker.css">
+  <link rel="stylesheet" href="/intake.css"><link rel="stylesheet" href="/maker.css">
   <script type="module" src="/operator.js"></script>
 </head>
 <body class="operator-page">
-<header class="app-bar"><a class="brand" href="/operator">Re:Fit</a><span class="app-bar-title">제작자 작업실</span><nav class="operator-nav" aria-label="제작 자료">사진 측정</nav><span class="workspace-label">손목 보조기</span><button id="logout" class="text-button" hidden>화면 잠그기</button></header>
+<header class="app-bar"><a class="brand" href="/operator">Re:Fit</a><span class="app-bar-title">보조기 제작</span><nav class="operator-nav" aria-label="제작 자료">사진 측정</nav><span class="workspace-label">손목 보조기 · 치수 검토</span><button id="logout" class="text-button" hidden>화면 잠금</button></header>
 <main class="operator-main">
   <section id="login-panel" class="operator-login"><p class="eyebrow">제작자 작업실</p><h1>접수 사진과 치수 검토</h1><p>운영자 시작 화면의 관리자 키로 기록을 열어 주세요.</p><label>관리자 키<input id="admin-key" type="password" autocomplete="off" placeholder="DEMO_OPERATOR.html에서 확인"></label><button id="login" class="primary">측정 자료 열기</button><p class="retention-note">참가자 QR과 다른 운영자 전용 키예요.</p></section>
   <p id="operator-message" class="message" role="status" aria-live="polite"></p>
   <section id="dashboard" hidden>
     <div class="operator-layout">
       <aside class="participant-rail" aria-label="접수 사용자">
-        <div class="rail-heading"><h1>접수 목록</h1><button id="refresh" class="text-button" aria-label="접수 목록 새로고침">새로고침</button></div>
+        <p class="rail-overline">제작자 작업실</p><div class="rail-heading"><h1>사진 접수</h1><button id="refresh" class="text-button" aria-label="접수 목록 새로고침">새로고침</button></div>
         <label class="search-label"><span class="sr-only">이름 또는 접수번호로 검색</span><input id="search" type="search" maxlength="80" placeholder="이름·접수번호 검색"></label>
         <select id="review-filter" aria-label="검토 상태 필터"><option value="">전체 접수</option><option value="unreviewed">검토 대기</option><option value="retake_requested">재촬영 요청</option><option value="reviewed">검토 완료</option></select>
-        <p id="total-count" class="list-count"></p><div id="participant-list" class="participant-list"></div>
+        <div class="queue-column-labels" aria-hidden="true"><span>사용자</span><span>손 방향</span></div><p id="total-count" class="list-count"></p><div id="participant-list" class="participant-list"></div>
         <div class="pagination"><button id="previous">이전</button><span id="page-label"></span><button id="next">다음</button></div>
         <p class="queue-help">사용자를 선택하면 접수 당시의 원본과 계산 결과를 확인할 수 있습니다.</p>
       </aside>
@@ -29,8 +29,8 @@
             <div class="revision-bar"><label>결과 버전<select id="revision-select"></select></label><p id="revision-note"></p></div>
           </header>
           <nav class="review-steps" aria-label="측정 검토 순서">
-            <button id="review-step-photo" type="button" aria-current="step"><span>01</span><strong>사진 확인</strong><small>카드·손목 기준점</small></button>
-            <button id="review-step-dimensions" type="button"><span>02</span><strong>치수 대조</strong><small>사진 ↔ 11개 항목</small></button>
+            <button id="review-step-photo" type="button" aria-current="step"><span>01</span><strong>사진 확인</strong><small>기준점 보정</small></button>
+            <button id="review-step-dimensions" type="button"><span>02</span><strong>치수 대조</strong><small>11개 항목</small></button>
             <button id="review-step-review" type="button"><span>03</span><strong>검토 완료</strong><small>재촬영·자료 저장</small></button>
           </nav>
           <div class="case-notice"><p id="record-message" class="message" role="status"></p><details id="measurement-alerts"><summary id="warning-summary">촬영·측정 안내</summary><ul id="record-warnings" class="warnings"></ul></details></div>
@@ -38,14 +38,14 @@
             <section class="measurement-photos" aria-label="사용자 측정 사진">
               <div class="canvas-heading"><div class="result-photo-tabs" role="tablist" aria-label="측정 사진 보기"><button id="result-top-tab" type="button" role="tab" aria-controls="result-top-panel" aria-selected="true">손등 <small>가로·길이</small></button><button id="result-side-tab" type="button" role="tab" aria-controls="result-side-panel" aria-selected="false">측면 <small>두께</small></button></div><label class="canvas-original"><input type="checkbox" id="show-original"> 원본 보기</label></div>
               <div class="canvas-tools" role="toolbar" aria-label="사진 확인과 위치 보정 도구">
-                <span class="tool-label">기준점 보정</span><button id="edit-card" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="1"/><path d="M2 8V4h4m12 0h4v4M2 16v4h4m12 0h4v-4"/></svg>카드 모서리</button><button id="edit-wrist" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/></svg>손목 0점</button><span class="toolbar-divider"></span><button id="undo-point" type="button" disabled>↶ 되돌리기</button><button id="cancel-correction" type="button">보정 취소</button><label class="zoom-control"><span class="sr-only">확대</span><select id="photo-zoom" aria-label="사진 확대"><option value="1">화면 맞춤</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label>
+                <span class="tool-label">보정</span><button id="edit-card" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="1"/><path d="M2 8V4h4m12 0h4v4M2 16v4h4m12 0h4v-4"/></svg>카드 모서리</button><button id="edit-wrist" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/></svg>손목 0점</button><span class="toolbar-divider"></span><button id="undo-point" type="button" disabled>되돌리기</button><button id="cancel-correction" type="button">취소</button><label class="zoom-control"><span class="sr-only">확대</span><select id="photo-zoom" aria-label="사진 확대"><option value="1">화면 맞춤</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label>
               </div>
               <div class="canvas-surface">
                 <figure id="result-top-panel" role="tabpanel" aria-labelledby="result-top-tab"><div id="top-scroll" class="photo-scroll"><div id="top-stage" class="photo-stage"><img id="top-photo" hidden alt="사용자 손등 사진과 측정 위치"><svg id="top-geometry" class="geometry-layer" aria-label="손등 측정선과 보정 위치"></svg></div></div><p id="top-photo-empty" class="photo-empty">아직 손등 사진이 없어요.</p><figcaption>손등 사진 · ①③⑤⑥⑦⑧⑨</figcaption><a id="top-photo-link" target="_blank" rel="noopener" hidden>사진 크게 열기</a></figure>
                 <figure id="result-side-panel" role="tabpanel" aria-labelledby="result-side-tab" hidden><div id="side-scroll" class="photo-scroll"><div id="side-stage" class="photo-stage"><img id="side-photo" hidden alt="사용자 측면 사진과 측정 위치"><svg id="side-geometry" class="geometry-layer" aria-label="측면 측정선과 보정 위치"></svg></div></div><p id="side-photo-empty" class="photo-empty">아직 측면 사진이 없어요.</p><figcaption>측면 사진 · ②④⑩⑪</figcaption><a id="side-photo-link" target="_blank" rel="noopener" hidden>사진 크게 열기</a></figure>
                 <span class="canvas-unit">측정 단위 mm</span>
               </div>
-              <div class="selection-readout"><span class="readout-marker" aria-hidden="true"></span><p id="selected-measurement">오른쪽 치수표에서 항목을 선택하면 해당 선이 강조됩니다.</p></div>
+              <div class="selection-readout"><span class="readout-marker" aria-hidden="true"></span><span class="readout-label">선택 위치</span><p id="selected-measurement">오른쪽 치수표에서 항목을 선택하면 해당 선이 강조됩니다.</p></div>
             </section>
             <aside class="task-inspector" aria-label="현재 검토 작업">
               <header class="inspector-heading"><button id="open-retake-photo" type="button" class="inspector-retake">재촬영 요청</button><p id="stage-kicker" class="eyebrow">01 / 사진 확인</p><h3 id="stage-title">사진과 기준점 확인</h3><p id="stage-description">손 방향과 기준 위치를 먼저 대조하세요.</p></header>
@@ -59,8 +59,8 @@
                   <div class="retake-prompt"><p>손·카드가 잘렸거나 자세가 다르면 보정보다 재촬영이 필요합니다.</p></div>
                 </section>
                 <section id="dimensions-panel" class="dimension-panel review-panel" aria-labelledby="dimension-heading" hidden>
-                  <div class="dimension-heading"><h3 id="dimension-heading">위치별 치수</h3><span>mm</span></div><p class="table-intro">값을 누르면 같은 위치의 측정선이 강조됩니다.</p>
-                  <table class="fabrication-table"><thead><tr><th scope="col">위치</th><th scope="col">폭·가로</th><th scope="col">두께</th></tr></thead><tbody id="section-dimensions"></tbody></table><p class="dimension-note">엄지·검지 가로 치수는 관절점에서 새끼 쪽 손 테두리까지입니다.</p>
+                  <div class="dimension-heading"><h3 id="dimension-heading">위치별 치수</h3><span>단위 mm</span></div><p class="table-intro">치수를 선택하면 사진에서 측정 위치를 확인할 수 있습니다.</p>
+                  <table class="fabrication-table"><thead><tr><th scope="col">위치</th><th scope="col">폭·가로 <small>손등</small></th><th scope="col">두께 <small>측면</small></th></tr></thead><tbody id="section-dimensions"></tbody></table><p class="dimension-note">폭은 손등, 두께는 측면 사진을 기준으로 계산합니다.</p>
                   <h4 class="length-heading">길이 기준</h4><dl id="length-dimensions" class="numbered-dimensions"></dl>
                   <details class="landmark-help"><summary>관절점·측정 방향 안내</summary><p>0 손목 · 2 엄지 관절 · 5 검지 뿌리 · 18 새끼손가락 가운데 마디</p><p>가로선은 손 방향(0→9)에 수직입니다. ⑤⑥⑦은 두 가로선 사이의 간격입니다.</p></details>
                 </section>
