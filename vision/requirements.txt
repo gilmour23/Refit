@@ -5,3 +5,5 @@ mediapipe==1.1.1
 opencv-contrib-python==5.0.0.93
 numpy==2.5.4
 pillow==13.0.0
+pillow-heif==1.8.1
+qrcode==8.2

@@ -1,0 +1,45 @@
+name: Web demo
+on:
+  push:
+    branches: ['feature/web-demo-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install vision runtime
+        run: python -m pip install -r vision/requirements.txt httpx
+      - name: Linux native graphics libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgles2
+      - name: Download official hand model
+        run: python scripts/fetch_model.py
+      - name: Python API and image tests
+        run: python -m unittest discover -s vision/tests -v
+        env:
+          PYTHONPATH: vision
+      - name: Native model and HTTP smoke
+        run: python vision/tests/native_smoke.py
+        env:
+          PYTHONPATH: vision
+      - name: Browser protocol tests
+        run: node --test vision/tests/*.test.mjs
+      - name: JavaScript syntax
+        run: |
+          node --check vision/web/app.js
+          node --check vision/web/intake.js
+          node --check vision/web/operator.js

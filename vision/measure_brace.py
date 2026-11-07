@@ -129,6 +129,21 @@ def hand_segments(top, hand):
     return out, lines, pos, warn
 
 
+def geometry_view(view, lines, original_shape):
+    """Geometry uses decoded original image pixels, independently of display zoom."""
+    f = view.get('f', 1.0)
+    def points(value):
+        if value is None:
+            return None
+        a = np.asarray(value, dtype=float) / f
+        return a.tolist() if np.isfinite(a).all() else None
+    return {'width': int(original_shape[1]), 'height': int(original_shape[0]),
+            'lines': {str(i): points(line) for i, line in lines.items()
+                      if line is not None and points(line) is not None},
+            'card': points(view.get('marker')),
+            'wrist': points(view['pts'][0]) if 'pts' in view else None}
+
+
 def measure_brace(top_img, side_img, session_id, marker_mm=50.0, fixed_mm=FIXED_MM,
                   overrides=None, focal35=(None, None)):
     """위·옆 사진 → (결과 dict, 위 overlay, 옆 overlay, 보고서 그림). 실패하면 보고서 = None."""
@@ -141,6 +156,8 @@ def measure_brace(top_img, side_img, session_id, marker_mm=50.0, fixed_mm=FIXED_
     problems = [f"[{names[k]} 사진] {v['error']}" for k, v in [("top", top), ("side", side)] if "error" in v]
     result = {"ok": not problems, "message": " / ".join(problems) or None, "session_id": session_id}
     if problems:
+        result['geometry'] = {'top': geometry_view(top, {}, top_img.shape),
+                              'side': geometry_view(side, {}, side_img.shape)}
         return result, M.draw_view(top, "top"), M.draw_view(side, "side"), None
     warnings = []
 
@@ -208,6 +225,8 @@ def measure_brace(top_img, side_img, session_id, marker_mm=50.0, fixed_mm=FIXED_
         "warnings": warnings,
     })
     top_lines = {i: raw[i][1] for i in (1, 3)} | seg_lines
+    result['geometry'] = {'top': geometry_view(top, top_lines, top_img.shape),
+                          'side': geometry_view(side, side_lines, side_img.shape)}
     shown = {i: rd(dims.get(i)) for i in range(1, N_DIMS + 1)}  # 보고서에는 JSON과 같은 반올림 값
     missing = [str(i) for i in range(1, N_DIMS + 1)
                if dims.get(i) is None or not np.isfinite(dims[i]) or dims[i] <= 0]
@@ -316,3 +335,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
