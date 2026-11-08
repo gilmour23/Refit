@@ -34,3 +34,22 @@ for(const samePerson of [false,true])test(samePerson?'switching versions of one 
  node('print-sheet').onclick();assert.equal(printed,1);
  node('logout').onclick();assert.equal(node('print-sheet').disabled,true);node('print-sheet').onclick();assert.equal(printed,1);
 });
+
+test('a failed result can reanalyse saved originals without changing points; old revisions and unfinished edits remain blocked',()=>{
+ const nodes=new Map();
+ const node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,disabled:false,textContent:'',value:'',checked:false,classList:{toggle(){}},setAttribute(){}});return nodes.get(id);};
+ let submitted=null;
+ const ctx=vm.createContext({...fabrication,...geometry,...workbench,document:{getElementById:node,querySelectorAll:()=>[]},window:{addEventListener(){},confirm:()=>true},location:{hash:''}});
+ const source=fs.readFileSync(new URL('../web/operator.js',import.meta.url),'utf8').split('\n').filter(l=>!l.startsWith('import ')).join('\n');vm.runInContext(source,ctx);
+ ctx.submit=(action,body)=>{submitted={action,body:JSON.parse(JSON.stringify(body))};};
+ vm.runInContext(`current={id:'${'a'.repeat(32)}',revision:2,current_revision:2,status:'failed',result:{geometry:{top:{width:800,height:600}}}};draft=new CorrectionDraft({wrist_top:[10,20]});mutateRecord=submit;updateControls();`,ctx);
+ assert.equal(node('apply-correction').hidden,false);
+ assert.equal(node('apply-correction').disabled,false);
+ assert.equal(node('apply-correction').textContent,'원본 사진 다시 분석');
+ node('apply-correction').onclick();
+ assert.deepEqual(submitted,{action:'recalculate',body:{overrides:{wrist_top:[10,20]}}});
+ vm.runInContext("current.revision=1;updateControls();",ctx);
+ assert.equal(node('apply-correction').disabled,true,'Previous revisions cannot be reanalysed');
+ vm.runInContext("current.revision=2;draft.start('top','card');draft.add([20,30]);updateControls();",ctx);
+ assert.equal(node('apply-correction').disabled,true,'One of four pending corners cannot be submitted');
+});

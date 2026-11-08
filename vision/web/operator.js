@@ -117,8 +117,9 @@ function updateControls(){
  const mutable=isLatest()&&!['queued','processing'].includes(current?.status)&&!actionBusy;
  for(const id of ['edit-card','edit-wrist','auto-points','request-retake'])$(id).disabled=!mutable;
  $('undo-point').disabled=!mutable||!draft?.steps.length;
- $('apply-correction').disabled=!mutable||(!draft?.canApply&&!!current?.result?.geometry);
- $('apply-correction').textContent=current?.result?.geometry?'새 버전으로 저장·재계산':'원본 다시 계산 · 좌표 생성';
+ const retry=current?.status==='failed'&&!draft?.dirty&&!draft?.kind;
+ $('apply-correction').disabled=!mutable||(!retry&&!draft?.canApply&&!!current?.result?.geometry);
+ $('apply-correction').textContent=retry?'원본 사진 다시 분석':current?.result?.geometry?'새 버전으로 저장·재계산':'원본 다시 계산 · 좌표 생성';
  $('mark-reviewed').disabled=!mutable||!hasCompleteDimensions(current)||!$('review-ack').checked||!!draft?.dirty||current?.review_status==='reviewed';
  $('print-sheet').disabled=!printReady||!!draft?.dirty;
  updateTaskActions();
@@ -169,14 +170,15 @@ function setReviewStep(step){
 }
 function updateTaskActions(){
  const info=reviewStage(activeStep),dirty=!!draft?.dirty,legacy=!!current&&!current.result?.geometry&&['complete','failed'].includes(current.status);
- const saving=dirty||legacy;
+ const retry=current?.status==='failed'&&!dirty&&!draft?.kind&&activeStep==='photo';
+ const saving=dirty||legacy||retry;
  $('open-retake-photo').hidden=activeStep!=='photo';$('open-retake-photo').disabled=!isLatest()||actionBusy||['queued','processing'].includes(current?.status);$('open-retake-review').disabled=$('open-retake-photo').disabled;
  $('workflow-back').hidden=info.index===0;$('workflow-back').disabled=actionBusy;
  $('workflow-next').hidden=info.next===null||saving;$('workflow-next').disabled=actionBusy;
  $('workflow-next').textContent=info.action+' →';
  $('apply-correction').hidden=!saving;$('mark-reviewed').hidden=activeStep!=='review'||saving;
- $('task-action-title').textContent=dirty?'보정한 위치가 아직 저장되지 않았습니다':legacy?'이전 결과에는 선 좌표가 없습니다':current?.review_status==='reviewed'?'이 버전 검토 완료':info.title;
- $('task-action-note').textContent=dirty?'새 버전으로 재계산하면 치수와 보고서가 갱신됩니다.':legacy?'원본을 다시 계산하면 사진 위 측정선을 선택할 수 있습니다.':current?.review_status==='reviewed'?'자료 받기에서 이 버전의 측정표와 치수를 저장하세요.':activeStep==='review'?'사진과 치수를 대조한 뒤 확인 항목에 체크하세요.':activeStep==='dimensions'?'누락된 값이나 잘못된 측정선은 사진 확인에서 보정하세요.':'사진이 잘렸거나 자세가 다르면 재촬영을 요청하세요.';
+ $('task-action-title').textContent=dirty?'보정한 위치가 아직 저장되지 않았습니다':legacy?'이전 결과에는 선 좌표가 없습니다':retry?'사진 분석이 완료되지 않았습니다':current?.review_status==='reviewed'?'이 버전 검토 완료':info.title;
+ $('task-action-note').textContent=dirty?'새 버전으로 재계산하면 치수와 보고서가 갱신됩니다.':legacy?'원본을 다시 계산하면 사진 위 측정선을 선택할 수 있습니다.':retry?'저장된 원본으로 다시 분석합니다. 이전 결과는 보존됩니다. 카드 위치가 다르면 네 모서리를 직접 지정하세요.':current?.review_status==='reviewed'?'자료 받기에서 이 버전의 측정표와 치수를 저장하세요.':activeStep==='review'?'사진과 치수를 대조한 뒤 확인 항목에 체크하세요.':activeStep==='dimensions'?'누락된 값이나 잘못된 측정선은 사진 확인에서 보정하세요.':'사진이 잘렸거나 자세가 다르면 재촬영을 요청하세요.';
  $('guide-title').textContent=draft?.kind==='wrist'?'손목 기준점 · 0번':'카드 85.6 × 54mm';
  $('guide-description').textContent=draft?.kind==='wrist'?'손과 팔이 만나는 손목 기준점을 사진에서 한 번 선택하세요. 선택 후 11개 치수를 다시 계산합니다.':'카드 네 모서리를 둘레 순서로 선택하세요. 손과 겹치지 않은 규격 카드를 기준으로 배율을 계산합니다.';
  $('card-point-guide').hidden=draft?.kind==='wrist';

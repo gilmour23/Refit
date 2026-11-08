@@ -46,6 +46,7 @@ import cv2
 import numpy as np
 
 from measure import find_hand, find_marker_scale, imread, imwrite
+from card_detection import find_local_card
 
 WRIST = 0  # MediaPipe 손 관절점 0번 = 손목
 MIDDLE_MCP = 9  # 중지 뿌리 → 손목에서 이 점 반대 방향이 팔 쪽
@@ -158,16 +159,23 @@ def find_card(img, arm, bg):
 
     bg 후보 2개를 차례로 시도: ① 팔 바로 옆 띠의 색 ② 팔을 뺀 사진 전체의 대표색.
     (①은 팔 옆에 소매·그림자가 걸치면 실제 배경보다 어둡게 잡혀서, 하얀 책상 등에서 실패함 → ②로 보완)
+    두 색상 기준으로 못 찾으면 카드 후보의 경계와 카드 바로 주변 배경으로 보완 검출.
     없으면 (None, None).
     """
     lab = cv2.cvtColor(cv2.GaussianBlur(img, (7, 7), 0), cv2.COLOR_BGR2LAB).astype(np.float32)
     not_arm = cv2.dilate(arm, np.ones((15, 15), np.uint8)) == 0
-    candidates = ([bg] if bg is not None else []) + [np.median(lab[not_arm], axis=0)]
+    candidates = ([bg] if bg is not None else [])
+    if not_arm.any():
+        candidates.append(np.median(lab[not_arm], axis=0))
     for ref in candidates:
         found = _find_card_with_bg(img, lab, arm, not_arm, ref)
         if found[0] is not None:
             return found
-    return None, None
+    box = find_local_card(img, arm)
+    if box is None:
+        return None, None
+    long_px, short_px = sorted(cv2.minAreaRect(box.astype(np.float32))[1], reverse=True)
+    return float((CARD_MM[0] / long_px + CARD_MM[1] / short_px) / 2), box
 
 
 def _find_card_with_bg(img, lab, arm, not_arm, bg):
@@ -175,7 +183,8 @@ def _find_card_with_bg(img, lab, arm, not_arm, bg):
     # 기준선: 팔 바로 옆 배경의 색 흔들림(보풀·그림자)보다 확실히 큰 차이
     ring = cv2.dilate(arm, np.ones((31, 31), np.uint8)) & ~cv2.dilate(arm, np.ones((11, 11), np.uint8))
     # (중앙값 사용: 팔 옆에 지퍼·책상 등이 조금 걸쳐 있어도 영향 안 받게)
-    mask = ((dist > max(15, 2 * np.median(dist[ring > 0]))) & not_arm).astype(np.uint8) * 255
+    noise = float(np.median(dist[ring > 0])) if ring.any() else 0.
+    mask = ((dist > max(15, 2 * noise)) & not_arm).astype(np.uint8) * 255
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     mask = cv2.morphologyEx(cv2.morphologyEx(mask, cv2.MORPH_OPEN, k), cv2.MORPH_CLOSE, k)
 
@@ -207,7 +216,14 @@ def _find_card_with_bg(img, lab, arm, not_arm, bg):
     refined = ((dist > 0.5 * card_level) & (near > 0)).astype(np.uint8) * 255
     contours, _ = cv2.findContours(refined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if contours:
-        best = cv2.minAreaRect(max(contours, key=cv2.contourArea))
+        refined_best = cv2.minAreaRect(max(contours, key=cv2.contourArea))
+        long_px, short_px = sorted(refined_best[1], reverse=True)
+        # Printing/reflections can isolate only part of the card during refinement.
+        # Do not replace a valid whole-card reference with an invalid subrectangle.
+        if short_px > 0 and abs(long_px / short_px - CARD_MM[0] / CARD_MM[1]) <= .12:
+            original_area = best[1][0] * best[1][1]
+            if .8 <= long_px * short_px / original_area <= 1.2:
+                best = refined_best
     long_px, short_px = max(best[1]), min(best[1])
     scale = (CARD_MM[0] / long_px + CARD_MM[1] / short_px) / 2
     return float(scale), cv2.boxPoints(best)

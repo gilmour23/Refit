@@ -154,7 +154,8 @@ def measure_brace(top_img, side_img, session_id, marker_mm=50.0, fixed_mm=FIXED_
     side = M.measure_view(side_img, marker_mm, ov.get("wrist_side"), auto_wrist=False, card=ov.get("card_side"))
     names = {"top": "위", "side": "옆"}
     problems = [f"[{names[k]} 사진] {v['error']}" for k, v in [("top", top), ("side", side)] if "error" in v]
-    result = {"ok": not problems, "message": " / ".join(problems) or None, "session_id": session_id}
+    result = {"ok": not problems, "message": " / ".join(problems) or None, "session_id": session_id,
+              "analysis_version": "2026-11-08.1"}
     if problems:
         result['geometry'] = {'top': geometry_view(top, {}, top_img.shape),
                               'side': geometry_view(side, {}, side_img.shape)}
@@ -232,7 +233,14 @@ def measure_brace(top_img, side_img, session_id, marker_mm=50.0, fixed_mm=FIXED_
                if dims.get(i) is None or not np.isfinite(dims[i]) or dims[i] <= 0]
     if missing:
         result["ok"] = False
-        result["message"] = "치수를 측정하지 못했어요 (" + ", ".join(missing) + "). 손 전체와 손목 아래가 보이게 다시 촬영해 주세요."
+        hints = []
+        if any(i in missing for i in ('1', '2')):
+            hints.append("손등·측면 사진 모두 손목 아래 10cm까지 담아 주세요")
+        if any(i in missing for i in ('8', '9')):
+            hints.append("손과 배경의 경계를 구분하지 못했어요. 나뭇결·무늬 없는 단색 배경에서 다시 찍어 주세요")
+        if not hints:
+            hints.append("손 전체와 손목 아래가 보이게 다시 촬영해 주세요")
+        result["message"] = "치수를 측정하지 못했어요 (" + ", ".join(missing) + "). " + ". ".join(hints) + "."
     report = make_report(result, top, side, top_lines, side_lines, shown, NAMES) if not missing else None
     return (result,
             draw(top, top_lines, dims, "top", top_hand, top["pts"], (M.WRIST, THUMB_MCP, INDEX_MCP, PINKY_MCP, PINKY_PIP)),
