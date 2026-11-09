@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse, base64, hashlib, html, json, os, platform, re, secrets, socket
 import subprocess, sys, time, urllib.request, venv, webbrowser
+from string import Template
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PRIVATE=ROOT/'.demo-private'
@@ -66,7 +67,14 @@ def join_page(url,upload):
  import qrcode
  from io import BytesIO
  link=url+'/#key='+upload;data=BytesIO();qrcode.make(link).save(data,format='PNG')
- content=f'''<!doctype html><meta charset="utf-8"><title>ReFit 시연 접속</title><style>body{{font:18px system-ui;max-width:760px;margin:40px auto;line-height:1.8;padding:20px}}code{{overflow-wrap:anywhere}}img{{width:280px}}</style><h1>Re:Fit 시연 접속</h1><p>참가자 사진 제출: 갤럭시 Chrome / 아이폰·아이패드 Safari 또는 Bluefy</p><p><a href="{html.escape(link)}">촬영 안내와 사진 접수 열기</a></p><img alt="연결키가 포함된 팀원용 접속 QR" src="data:image/png;base64,{base64.b64encode(data.getvalue()).decode()}"><p>QR을 스캔하면 촬영 안내 → 이름·측정할 손 → 사진 두 장 제출로 이어집니다.</p><p>센서 시연은 <a href="{html.escape(url)}/demo#key={html.escape(upload)}">별도 센서 시연 화면</a>에서 진행하세요. 갤럭시 Chrome / iPhone·iPad Bluefy가 필요합니다.</p><h2>갤럭시 APK 설정</h2><p>측정 서버 주소: <code>{html.escape(url)}</code></p><p>연결키: <code>{html.escape(upload)}</code></p><p>이 페이지와 QR은 팀원에게만 전달하세요. 관리자 키는 포함하지 않습니다.</p><p>노트북을 전원·인터넷에 연결하고 실행 창을 유지하세요. 터널 재시작 시 주소가 바뀝니다.</p>'''
+ template=Path(__file__).with_name('join.html').read_text('utf8')
+ guide=Path(__file__).resolve().parents[1]/'vision/web/guide-top.webp'
+ content=Template(template).substitute(
+  JOIN_LINK=html.escape(link,quote=True),
+  QR_DATA='data:image/png;base64,'+base64.b64encode(data.getvalue()).decode(),
+  GUIDE_DATA='data:image/webp;base64,'+base64.b64encode(guide.read_bytes()).decode(),
+  SERVER_URL=html.escape(url,quote=True),UPLOAD_KEY=html.escape(upload,quote=True),
+  SENSOR_LINK=html.escape(url+'/demo#key='+upload,quote=True))
  path=ROOT/'DEMO_JOIN.html';path.write_text(content,encoding='utf8');path.chmod(0o600)
  text=ROOT/'DEMO_CONNECTION.txt';text.write_text(f'HTTPS 주소: {url}\n연결키: {upload}\n갤럭시 Chrome / iPhone·iPad Bluefy\n실행 창을 닫으면 접속이 종료됩니다.\n',encoding='utf8');text.chmod(0o600)
  return path

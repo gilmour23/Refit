@@ -27,7 +27,7 @@ for(const which of ['top','side'])for(const kind of ['camera','file'])$(which+'-
 async function checkStatus(){
  clearTimeout(pollTimer);if(!receipt)return;const target=receipt,generation=++statusEpoch;$('check-status').disabled=true;
  try{const r=await fetch('/intake/status',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(receipt),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});const j=await readBoundedJson(r,8192);if(target!==receipt||generation!==statusEpoch)return;if(!r.ok)throw Error(j.detail||'접수 상태를 확인하지 못했어요.');
- $('receipt-title').textContent=({queued:'사진이 접수됐어요',processing:'사진을 분석하고 있어요',complete:j.review_status==='reviewed'?'운영자 검토가 끝났어요':'치수 계산이 끝났어요',failed:'사진을 다시 확인해 주세요'})[j.status]||'접수 확인';say('receipt-message',j.review_status==='retake_requested'?'재촬영 요청: '+j.retake_reason:j.review_status==='reviewed'?'운영자가 사진과 측정 결과를 확인했어요.':j.status==='complete'?'운영자가 사진과 치수를 검토할 차례예요.':j.message,j.status==='failed');retakeState=j;showRetake();
+ $('receipt-title').textContent=({queued:'사진이 접수됐어요',processing:'사진을 분석하고 있어요',complete:'치수 계산이 끝났어요',failed:'사진을 다시 확인해 주세요'})[j.status]||'접수 확인';say('receipt-message',j.review_status==='retake_requested'?'재촬영 요청: '+j.retake_reason:j.status==='complete'?'사진과 치수가 운영자 화면에 정리됐어요.':j.message,j.status==='failed');retakeState=j;showRetake();
  pollTimer=setTimeout(checkStatus,['queued','processing'].includes(j.status)?2500:10000);
  }catch(e){if(target!==receipt||generation!==statusEpoch)return;say('receipt-message','접수는 유지돼요. '+(e.message||'잠시 뒤 상태 확인을 눌러 주세요.'),true);}finally{if(target===receipt&&generation===statusEpoch)$('check-status').disabled=false;}
 }
