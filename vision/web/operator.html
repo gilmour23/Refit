@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>Re:Fit · 보조기 제작 치수</title><link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/intake.css"><link rel="stylesheet" href="/maker.css"><script type="module" src="/operator.js"></script>
+</head>
+<body class="operator-page">
+<header id="start-header" class="app-bar"><a class="brand" href="/operator">Re:Fit</a><span>보조기 제작</span></header>
+<main class="operator-main">
+<section id="login-panel" class="operator-login"><p class="eyebrow">제작자 작업실</p><h1>접수 사진과 치수 확인</h1><p>운영자 시작 화면의 관리자 키로 기록을 열어 주세요.</p><label>관리자 키<input id="admin-key" type="password" autocomplete="off" placeholder="DEMO_OPERATOR.html에서 확인"></label><button id="login" class="primary">측정 자료 열기</button><p class="retention-note">참가자 QR과 다른 운영자 전용 키예요.</p></section>
+<p id="operator-message" class="message" role="status" aria-live="polite"></p>
+<section id="dashboard" hidden>
+<div class="operator-layout">
+<aside class="participant-rail" aria-label="접수 사용자">
+<a class="rail-brand" href="/operator">Re:Fit</a>
+<div class="rail-heading"><h1>사진 접수</h1><button id="refresh" class="text-button" aria-label="접수 목록 새로고침">새로고침</button></div>
+<label class="search-label"><span class="sr-only">이름 또는 접수번호로 검색</span><input id="search" type="search" maxlength="80" placeholder="이름·접수번호 검색"></label>
+<p id="total-count" class="list-count"></p><div class="queue-column-labels" aria-hidden="true"><span>사용자</span><span>손</span></div>
+<div id="participant-list" class="participant-list"></div>
+<div id="pagination" class="pagination" hidden><button id="previous">이전</button><span id="page-label"></span><button id="next">다음</button></div>
+<button id="logout" class="rail-lock" hidden>화면 잠금</button>
+</aside>
+<article id="participant-detail">
+<div id="empty-selection" class="empty-selection"><h2>사용자를 선택하세요</h2><p>사진과 11개 치수를 확인할 수 있습니다.</p></div>
+<div id="record-content" hidden>
+<header class="record-header">
+<div class="case-identity"><div class="record-title-line"><h2 id="record-name"></h2><strong id="record-hand" class="record-hand"></strong><span id="record-status" class="record-status"></span></div><div class="case-meta"><p id="record-meta"></p><p id="record-number"></p></div></div>
+<div class="record-menus">
+<details id="download-menu" class="case-menu"><summary class="primary-summary">자료 받기 ↓</summary><div class="menu-content download-options"><button data-download="report">측정표 JPG</button><button data-download="csv">치수 CSV</button></div></details>
+<details id="record-menu" class="case-menu"><summary>더보기 ···</summary><div class="menu-content record-options"><label>이전 결과<select id="revision-select"></select></label><p id="revision-note" class="menu-note"></p><hr><button data-download="top_original">손등 원본 받기</button><button data-download="side_original">측면 원본 받기</button><hr><button id="delete-record" class="danger">이 접수 삭제</button></div></details>
+</div>
+</header>
+<div id="case-notice" class="case-notice" hidden><p id="record-message" class="message" role="status"></p></div>
+<div class="result-layout">
+<section class="measurement-photos" aria-label="사용자 측정 사진">
+<div class="canvas-heading"><div class="result-photo-tabs" role="tablist" aria-label="측정 사진 보기"><button id="result-top-tab" type="button" role="tab" aria-controls="result-top-panel" aria-selected="true">손등</button><button id="result-side-tab" type="button" role="tab" aria-controls="result-side-panel" aria-selected="false">측면</button></div>
+<details id="photo-tools" class="case-menu"><summary>보정 도구 ▾</summary><div class="menu-content photo-options"><button id="edit-card" type="button" aria-pressed="false">카드 모서리 지정</button><button id="edit-wrist" type="button" aria-pressed="false">손목 0점 지정</button><button id="reanalyze-record" type="button">원본 사진 다시 분석</button><button id="open-retake-photo" type="button">재촬영 요청</button><hr><label class="canvas-original"><input type="checkbox" id="show-original"> 측정선 없는 원본 보기</label><label class="zoom-control">사진 확대<select id="photo-zoom"><option value="1">화면 맞춤</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label><details class="calibration-details"><summary>계산 기준</summary><dl id="calibration-info"></dl></details></div></details>
+</div>
+<section id="correction-panel" class="correction-panel" hidden aria-label="위치 보정"><p id="correction-instruction" role="status"></p><div class="correction-actions"><button id="undo-point" type="button" disabled>한 점 되돌리기</button><button id="auto-points" type="button">자동 검출로</button><button id="cancel-correction" type="button">취소</button><button id="apply-correction" type="button" class="primary" disabled>저장·재계산</button></div><details class="point-help"><summary>선택 방법</summary><p id="guide-title"></p><p id="guide-description"></p><svg id="card-point-guide" viewBox="0 0 240 124" role="img" aria-label="카드 네 모서리를 둘레 순서로 선택하는 예시"><rect x="38" y="23" width="164" height="80" rx="7" fill="#f4f6f5" stroke="#a8b5b1"/><g fill="#4f58b9"><circle cx="38" cy="23" r="11"/><circle cx="202" cy="23" r="11"/><circle cx="202" cy="103" r="11"/><circle cx="38" cy="103" r="11"/></g><g fill="white" font-size="12" text-anchor="middle" dominant-baseline="central"><text x="38" y="23">1</text><text x="202" y="23">2</text><text x="202" y="103">3</text><text x="38" y="103">4</text></g></svg></details></section>
+<div class="canvas-surface">
+<figure id="result-top-panel" role="tabpanel" aria-labelledby="result-top-tab"><div id="top-scroll" class="photo-scroll"><div id="top-stage" class="photo-stage"><img id="top-photo" hidden alt="사용자 손등 사진과 측정 위치"><svg id="top-geometry" class="geometry-layer" aria-label="손등 측정선과 보정 위치"></svg></div></div><p id="top-photo-empty" class="photo-empty">아직 손등 사진이 없어요.</p><figcaption class="sr-only">손등 사진 · ①③⑤⑥⑦⑧⑨</figcaption><a id="top-photo-link" target="_blank" rel="noopener" hidden>사진 크게 열기</a></figure>
+<figure id="result-side-panel" role="tabpanel" aria-labelledby="result-side-tab" hidden><div id="side-scroll" class="photo-scroll"><div id="side-stage" class="photo-stage"><img id="side-photo" hidden alt="사용자 측면 사진과 측정 위치"><svg id="side-geometry" class="geometry-layer" aria-label="측면 측정선과 보정 위치"></svg></div></div><p id="side-photo-empty" class="photo-empty">아직 측면 사진이 없어요.</p><figcaption class="sr-only">측면 사진 · ②④⑩⑪</figcaption><a id="side-photo-link" target="_blank" rel="noopener" hidden>사진 크게 열기</a></figure>
+</div>
+<p id="selected-measurement" hidden class="selection-readout" role="status">치수를 선택하면 사진에서 측정 위치가 강조됩니다.</p>
+</section>
+<aside id="dimensions-panel" class="dimension-panel" aria-labelledby="dimension-heading">
+<div class="dimension-heading"><h3 id="dimension-heading">치수</h3><span>단위 mm</span></div>
+<table class="fabrication-table"><thead><tr><th scope="col">측정 위치</th><th scope="col">폭·가로</th><th scope="col">두께</th></tr></thead><tbody id="section-dimensions"></tbody></table>
+<h4 class="length-heading">길이</h4><dl id="length-dimensions" class="numbered-dimensions"></dl>
+<details id="measurement-alerts" class="measurement-alerts" hidden><summary id="warning-summary">측정 안내</summary><ul id="record-warnings" class="warnings"></ul></details>
+</aside>
+</div>
+</div>
+</article>
+</div>
+</section>
+</main>
+<dialog id="retake-dialog"><h2>다시 필요한 사진을 지정하세요</h2><p>참가자의 기존 접수 화면에 요청 사유가 표시됩니다.</p><fieldset class="retake-views"><legend>재촬영할 사진</legend><label><input type="checkbox" id="retake-top"> 손등</label><label><input type="checkbox" id="retake-side"> 측면</label></fieldset><label>재촬영 이유<textarea id="retake-reason" maxlength="300" rows="3" placeholder="어떤 자세나 위치를 고쳐야 하는지 적어 주세요."></textarea></label><p id="retake-error" role="alert" class="error"></p><div class="dialog-actions"><button id="cancel-retake" type="button">취소</button><button id="request-retake" type="button">재촬영 요청 저장</button></div></dialog>
+<dialog id="delete-dialog"><h2>이 접수를 삭제할까요?</h2><p id="delete-description"></p><p>이름·사진 원본·보고서·치수를 함께 삭제합니다. 삭제 후 복구할 수 없어요.</p><div class="dialog-actions"><button id="cancel-delete">취소</button><button id="confirm-delete" class="danger">삭제하기</button></div></dialog>
+</body></html>

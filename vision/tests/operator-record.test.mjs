@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {operatorHarness,tick} from './operator-harness.mjs';
+for(const samePerson of [false,true])test(samePerson?'switching versions cannot reveal stale photographs':'switching people isolates photographs and locking disables downloads',async()=>{
+ const h=operatorHarness({deferImages:true});const a='a'.repeat(32),b='b'.repeat(32);
+ const first=h.run(`selectRecord('${a}',1)`);await tick();assert.equal(h.decodes.length,2);
+ const second=h.run(`selectRecord('${samePerson?a:b}',2)`);await tick();assert.equal(h.decodes.length,4);
+ h.decodes[0]();h.decodes[1]();await first;
+ assert.equal(h.node('record-name').textContent,samePerson?'참가자 A':'참가자 B');
+ assert.equal(h.node('record-hand').textContent,samePerson?'왼손':'오른손');
+ assert.equal(h.node('top-photo').hidden,true,'An older decode cannot show the current photograph early');
+ assert.equal(h.revoked.length,2,'Switching revokes the old case image URLs');
+ h.decodes[2]();h.decodes[3]();await second;
+ assert.equal(h.node('top-photo').hidden,false);
+ assert.equal(h.node('dimensions-panel').hidden,false);
+ h.run("draft.start('top','wrist');draft.add([12,13]);updateControls();");
+ assert.equal(h.files.find(b=>b.dataset.download==='csv').disabled,true);
+ h.run('draft.undo();updateControls();');
+ assert.equal(h.files.find(b=>b.dataset.download==='csv').disabled,false);
+ h.node('logout').onclick();
+ assert.equal(h.node('record-content').hidden,true);
+ assert.equal(h.node('top-photo').hidden,true);
+ assert.equal(h.node('top-photo').src,undefined);
+ assert.ok(h.files.every(b=>b.disabled));
+ assert.equal(h.revoked.length,4);
+});

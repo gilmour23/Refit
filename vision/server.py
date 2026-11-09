@@ -20,15 +20,32 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
+import asyncio
+import math
+from contextlib import asynccontextmanager
+from intake import IntakeService, router as intake_router
 
-from security import VisionSecurityMiddleware, read_photo
+from security import VisionSecurityMiddleware, read_photo, decode_photo
 from brace_report import dims_csv
 from measure import imwrite
 from measure_arm import exif_focal35, measure_arm, parse_quad
 from measure_brace import FIXED_MM, measure_brace
 
-app = FastAPI(title="Re:Fit 치수 측정 API (손목 보조기 /measure_brace + 전완 /measure)", version="2.2")
+@asynccontextmanager
+async def lifespan(app):
+    global measurement_lock
+    measurement_lock = asyncio.Lock()
+    app.state.intake = IntakeService(LOG_DIR / 'participants', lambda directory, session: process_intake(directory, session))
+    try:
+        yield
+    finally:
+        await app.state.intake.close()
+
+app = FastAPI(lifespan=lifespan, title="Re:Fit 치수 측정 API (손목 보조기 /measure_brace + 전완 /measure)", version="2.2")
 app.add_middleware(VisionSecurityMiddleware)
+measurement_lock = asyncio.Lock()
 
 LOG_DIR = Path(__file__).parent / "out" / "server"  # 받은 사진·결과를 남겨서 나중에 줄자 실측과 비교
 
@@ -79,7 +96,7 @@ async def measure_endpoint(
     imgs, focal = {}, []
     for name, up in [("top", top_image), ("side", side_image)]:
         data = await read_photo(up)
-        img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+        img = decode_photo(data)
         if img is None:
             label = "위" if name == "top" else "옆"
             return {"ok": False, "message": f"{label} 사진 파일을 읽을 수 없어요 (jpg/png만 가능)", "session_id": session}
@@ -140,7 +157,7 @@ async def measure_brace_endpoint(
     imgs, focal = {}, []
     for name, up in [("top", top_image), ("side", side_image)]:
         data = await read_photo(up)
-        img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+        img = decode_photo(data)
         if img is None:
             label = "위" if name == "top" else "옆"
             return {"ok": False, "message": f"{label} 사진 파일을 읽을 수 없어요 (jpg/png만 가능)", "session_id": session}
@@ -152,9 +169,13 @@ async def measure_brace_endpoint(
     except ValueError:
         return {"ok": False, "message": "좌표 형식이 틀렸어요. 손목은 'x,y', 카드는 'x1,y1,x2,y2,x3,y3,x4,y4'로 보내주세요",
                 "session_id": session}
+    if measurement_lock.locked():
+        raise HTTPException(429, '다른 사진을 분석 중이에요. 잠시 뒤 다시 시도해 주세요.')
     try:
-        result, top_ov, side_ov, report = measure_brace(imgs["top"][0], imgs["side"][0], session, marker_mm,
-                                                        fixed_mm, overrides, tuple(focal))
+        async with measurement_lock:
+            result, top_ov, side_ov, report = await run_in_threadpool(
+                measure_brace, imgs["top"][0], imgs["side"][0], session, marker_mm,
+                fixed_mm, overrides, tuple(focal))
     except Exception as e:
         result = {"ok": False, "message": f"측정 중 오류가 났어요. 다시 찍어주세요 ({type(e).__name__})",
                   "session_id": session}
@@ -230,3 +251,53 @@ def brace_dims(session_id: str):
     return FileResponse(_session_file(session_id, "dims.csv"), media_type="text/csv; charset=utf-8",
                         filename=f"{session_id}_dims.csv")
 
+
+
+
+@app.post('/demo/check')
+def demo_check():
+    from measure import MODEL
+    return {'ok': True, 'model_ready': MODEL.is_file(), 'photo_formats': ['JPEG', 'PNG', 'HEIF'], 'sensor_format': 'signed_INT16_LE'}
+
+
+async def process_intake(directory, session):
+    """Use the existing real measurement pipeline, preserving uploaded EXIF bytes."""
+    def calculate():
+        data = [(directory / (name + '.original')).read_bytes() for name in ('top', 'side')]
+        images = [decode_photo(value) for value in data]
+        if any(image is None for image in images):
+            return {'ok': False, 'session_id': session, 'message': '사진을 읽지 못했어요. 원본 사진을 다시 제출해 주세요.'}
+        for name, image in zip(('top', 'side'), images):
+            imwrite(directory / (name + '.jpg'), image)
+        correction_file = directory / 'corrections.json'
+        corrections = json.loads(correction_file.read_text(encoding='utf-8')) if correction_file.exists() else {}
+        result, top, side, report = measure_brace(images[0], images[1], session, 50.0, FIXED_MM,
+                                                 corrections, tuple(exif_focal35(value) for value in data))
+        for name, image in (('top_overlay', top), ('side_overlay', side)):
+            if image is not None: imwrite(directory / (name + '.jpg'), image)
+        dims = result.get('dims_mm') or {}
+        complete = all(isinstance(dims.get(str(i)), (int, float)) and not isinstance(dims.get(str(i)), bool)
+                       and math.isfinite(dims[str(i)]) and dims[str(i)] > 0 for i in range(1, 12))
+        if result.get('ok') is True and (not complete or report is None):
+            result['ok'] = False
+            result['message'] = '11개 치수와 보고서를 모두 얻지 못했어요. 촬영 조건을 확인하고 다시 제출해 주세요.'
+        if result.get('ok') is True:
+            imwrite(directory / 'report.jpg', report)
+            (directory / 'dims.csv').write_text(dims_csv(result), encoding='utf-8-sig')
+        return result
+    async with measurement_lock:
+        return await run_in_threadpool(calculate)
+
+
+app.include_router(intake_router)
+
+@app.get('/operator')
+def operator_page():
+    return FileResponse(Path(__file__).parent / 'web' / 'operator.html')
+
+@app.get('/demo')
+def demo_page():
+    return FileResponse(Path(__file__).parent / 'web' / 'demo.html')
+
+
+app.mount('/', StaticFiles(directory=Path(__file__).parent / 'web', html=True), name='web_demo')
